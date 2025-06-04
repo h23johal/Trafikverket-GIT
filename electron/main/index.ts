@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
+import { runStatusModule } from "../backend/runStatusModule";
 import path from 'node:path'
 import os from 'node:os'
 import { update } from './update'
