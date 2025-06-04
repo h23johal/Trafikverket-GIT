@@ -1,12 +1,9 @@
-"use strict";
-Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-const electron = require("electron");
-const node_module = require("node:module");
-const node_url = require("node:url");
-const path = require("node:path");
-const os = require("node:os");
-var _documentCurrentScript = typeof document !== "undefined" ? document.currentScript : null;
-const { autoUpdater } = node_module.createRequire(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("index.js", document.baseURI).href)("electron-updater");
+import { app, ipcMain, BrowserWindow, shell } from "electron";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import os from "node:os";
+const { autoUpdater } = createRequire(import.meta.url)("electron-updater");
 function update(win2) {
   autoUpdater.autoDownload = false;
   autoUpdater.disableWebInstaller = false;
@@ -14,13 +11,13 @@ function update(win2) {
   autoUpdater.on("checking-for-update", function() {
   });
   autoUpdater.on("update-available", (arg) => {
-    win2.webContents.send("update-can-available", { update: true, version: electron.app.getVersion(), newVersion: arg == null ? void 0 : arg.version });
+    win2.webContents.send("update-can-available", { update: true, version: app.getVersion(), newVersion: arg == null ? void 0 : arg.version });
   });
   autoUpdater.on("update-not-available", (arg) => {
-    win2.webContents.send("update-can-available", { update: false, version: electron.app.getVersion(), newVersion: arg == null ? void 0 : arg.version });
+    win2.webContents.send("update-can-available", { update: false, version: app.getVersion(), newVersion: arg == null ? void 0 : arg.version });
   });
-  electron.ipcMain.handle("check-update", async () => {
-    if (!electron.app.isPackaged) {
+  ipcMain.handle("check-update", async () => {
+    if (!app.isPackaged) {
       const error = new Error("The update feature is only available after the package.");
       return { message: error.message, error };
     }
@@ -30,7 +27,7 @@ function update(win2) {
       return { message: "Network error", error };
     }
   });
-  electron.ipcMain.handle("start-download", (event) => {
+  ipcMain.handle("start-download", (event) => {
     startDownload(
       (error, progressInfo) => {
         if (error) {
@@ -44,7 +41,7 @@ function update(win2) {
       }
     );
   });
-  electron.ipcMain.handle("quit-and-install", () => {
+  ipcMain.handle("quit-and-install", () => {
     autoUpdater.quitAndInstall(false, true);
   });
 }
@@ -54,24 +51,24 @@ function startDownload(callback, complete) {
   autoUpdater.on("update-downloaded", complete);
   autoUpdater.downloadUpdate();
 }
-node_module.createRequire(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("index.js", document.baseURI).href);
-const __dirname$1 = path.dirname(node_url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("index.js", document.baseURI).href));
-process.env.APP_ROOT = path.join(__dirname$1, "../..");
+createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+process.env.APP_ROOT = path.join(__dirname, "../..");
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-if (os.release().startsWith("6.1")) electron.app.disableHardwareAcceleration();
-if (process.platform === "win32") electron.app.setAppUserModelId(electron.app.getName());
-if (!electron.app.requestSingleInstanceLock()) {
-  electron.app.quit();
+if (os.release().startsWith("6.1")) app.disableHardwareAcceleration();
+if (process.platform === "win32") app.setAppUserModelId(app.getName());
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
   process.exit(0);
 }
 let win = null;
-const preload = path.join(__dirname$1, "../preload/index.mjs");
+const preload = path.join(__dirname, "../preload/index.mjs");
 const indexHtml = path.join(RENDERER_DIST, "index.html");
 async function createWindow() {
-  win = new electron.BrowserWindow({
+  win = new BrowserWindow({
     title: "Main window",
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
@@ -93,32 +90,32 @@ async function createWindow() {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
   });
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https:")) electron.shell.openExternal(url);
+    if (url.startsWith("https:")) shell.openExternal(url);
     return { action: "deny" };
   });
   update(win);
 }
-electron.app.whenReady().then(createWindow);
-electron.app.on("window-all-closed", () => {
+app.whenReady().then(createWindow);
+app.on("window-all-closed", () => {
   win = null;
-  if (process.platform !== "darwin") electron.app.quit();
+  if (process.platform !== "darwin") app.quit();
 });
-electron.app.on("second-instance", () => {
+app.on("second-instance", () => {
   if (win) {
     if (win.isMinimized()) win.restore();
     win.focus();
   }
 });
-electron.app.on("activate", () => {
-  const allWindows = electron.BrowserWindow.getAllWindows();
+app.on("activate", () => {
+  const allWindows = BrowserWindow.getAllWindows();
   if (allWindows.length) {
     allWindows[0].focus();
   } else {
     createWindow();
   }
 });
-electron.ipcMain.handle("open-win", (_, arg) => {
-  const childWindow = new electron.BrowserWindow({
+ipcMain.handle("open-win", (_, arg) => {
+  const childWindow = new BrowserWindow({
     webPreferences: {
       preload,
       nodeIntegration: true,
@@ -131,7 +128,9 @@ electron.ipcMain.handle("open-win", (_, arg) => {
     childWindow.loadFile(indexHtml, { hash: arg });
   }
 });
-exports.MAIN_DIST = MAIN_DIST;
-exports.RENDERER_DIST = RENDERER_DIST;
-exports.VITE_DEV_SERVER_URL = VITE_DEV_SERVER_URL;
+export {
+  MAIN_DIST,
+  RENDERER_DIST,
+  VITE_DEV_SERVER_URL
+};
 //# sourceMappingURL=index.js.map

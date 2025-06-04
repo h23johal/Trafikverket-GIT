@@ -11,7 +11,7 @@
       "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777/"
     }
   },
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
