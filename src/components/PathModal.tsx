@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useStatusData } from '../context/StatusDataContext';
+
+
 
 const defaultPaths = {
   testedPath: '',
@@ -7,8 +10,12 @@ const defaultPaths = {
 };
 
 export default function PathModal() {
+
+  const { setPaths, reloadData } = useStatusData();
+
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [paths, setPaths] = useState(defaultPaths);
+  const [paths, setLocalPaths] = useState(defaultPaths);
 
   useEffect(() => {
     const cached = localStorage.getItem('cachedPaths');
@@ -18,13 +25,21 @@ export default function PathModal() {
   const pickFile = async (key: keyof typeof paths) => {
     const path = await window.electronAPI.pickFile({ properties: ['openFile'] });
     if (path) {
-      setPaths((prev) => ({ ...prev, [key]: path }));
+      setLocalPaths((prev) => ({ ...prev, [key]: path }));
     }
   };
 
-  const save = () => {
-    localStorage.setItem('cachedPaths', JSON.stringify(paths));
-    setOpen(false);
+  const save = async () => {
+    setLoading(true);
+    try {
+      setPaths(paths);
+      await reloadData();
+      setOpen(false);
+    } catch (error) {
+      alert("Fel vid inläsning.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,7 +60,7 @@ export default function PathModal() {
                   <input
                     type="text"
                     value={paths[key]}
-                    onChange={(e) => setPaths((p) => ({ ...p, [key]: e.target.value }))}
+                    onChange={(e) => setLocalPaths((p) => ({ ...p, [key]: e.target.value }))}
                     className="flex-grow border px-2 py-1 rounded"
                   />
                   <button

@@ -1,10 +1,11 @@
 import React, { useState } from "react";
+import { TriStateMap, TriState } from "@/type/filters";
 
 type FilterSelectProps = {
   title: string;
   options: string[];
-  selected: string[];
-  onChange: (newSelected: string[]) => void;
+  selected: TriStateMap;
+  onChange: (newSelected: TriStateMap) => void;
   modes: ("checkbox" | "dropdown")[];
   className?: string;
 };
@@ -22,21 +23,51 @@ const FiltersSelect: React.FC<FilterSelectProps> = ({
   const isCheckbox = modes.includes("checkbox");
 
   const toggleOption = (option: string) => {
-    const newSelected = selected.includes(option)
-      ? selected.filter((o) => o !== option)
-      : [...selected, option];
+    const current = selected[option];
+
+    const next: TriState =
+      current === "include"
+        ? "exclude"
+        : current === "exclude"
+        ? undefined
+        : "include";
+
+    const newSelected = { ...selected };
+    if (next === undefined) {
+      delete newSelected[option];
+    } else {
+      newSelected[option] = next;
+    }
+
     onChange(newSelected);
   };
 
   const checkboxList = (
-    <div className={`${isDropdown ? "absolute z-20 bg-white border shadow rounded mt-1 max-h-64 overflow-auto text-left" : "grid gap-2"} w-full`}>
+    <div
+      className={`${
+        isDropdown
+          ? "absolute z-20 bg-white border shadow rounded mt-1 max-h-64 overflow-auto text-left"
+          : "grid gap-2"
+      } w-full`}
+    >
       {options.map((option) => (
         <label key={option} className="block px-4 py-2 hover:bg-gray-100">
-          <input
-            type="checkbox"
-            className="mr-2"
-            checked={selected.includes(option)}
-            onChange={() => toggleOption(option)}
+          <span
+            onClick={() => toggleOption(option)}
+            className={`inline-block w-3 h-3 mr-2 rounded border border-gray-400 cursor-pointer ${
+              selected[option] === "include"
+                ? "bg-green-400"
+                : selected[option] === "exclude"
+                ? "bg-red-400"
+                : "bg-gray-200"
+            }`}
+            title={
+              selected[option] === "include"
+                ? "Inkluderad"
+                : selected[option] === "exclude"
+                ? "Exkluderad"
+                : "Neutral"
+            }
           />
           {option}
         </label>

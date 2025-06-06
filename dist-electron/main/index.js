@@ -10,7 +10,7 @@ const isDev = !!process.env.VITE_DEV_SERVER_URL;
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
 const pythonScriptPath = isDev ? path.join(__dirname$1, "trafikverket_status_module.py") : path.join(__dirname$1, "../../../dist-electron/trafikverket_status_module.py");
 const isValidResult = (raw) => {
-  return typeof raw === "object" && typeof raw.id === "number" && typeof raw.une_id === "string" && typeof raw.une === "string" && typeof raw.driftsomr === "string" && typeof raw.bandel === "string" && typeof raw.coverage_pct === "number" && typeof raw.tested_length_km === "number" && typeof raw.total_length_km === "number" && typeof raw.km_from === "number" && typeof raw.km_to === "number" && typeof raw.status === "string" && (raw.planned_date === null || typeof raw.planned_date === "string") && (raw.tested_date === null || typeof raw.tested_date === "string") && (raw.last_previous_test === null || typeof raw.last_previous_test === "string") && (raw.next_test_date === null || typeof raw.next_test_date === "string") && (raw.days_until === null || typeof raw.days_until === "number") && (raw.deadline === null || typeof raw.deadline === "string") && typeof raw.deadline_status === "string" && Array.isArray(raw.gaps) && raw.gaps.every(
+  return typeof raw === "object" && typeof raw.id === "number" && typeof raw.une_id === "string" && typeof raw.une_id_raw === "string" && typeof raw.une === "string" && typeof raw.driftsomr === "string" && typeof raw.bandel === "string" && typeof raw.coverage_pct === "number" && typeof raw.tested_length_km === "number" && typeof raw.total_length_km === "number" && typeof raw.km_from === "number" && typeof raw.km_to === "number" && typeof raw.status === "string" && (raw.planned_date === null || typeof raw.planned_date === "string") && (raw.tested_date === null || typeof raw.tested_date === "string") && (raw.last_previous_test === null || typeof raw.last_previous_test === "string") && (raw.next_test_date === null || typeof raw.next_test_date === "string") && (raw.days_until === null || typeof raw.days_until === "number") && (raw.deadline === null || typeof raw.deadline === "string") && typeof raw.deadline_status === "string" && Array.isArray(raw.gaps) && raw.gaps.every(
     (gap) => typeof gap.start_km === "number" && typeof gap.end_km === "number" && typeof gap.length_km === "number"
   );
 };
@@ -213,8 +213,12 @@ ipcMain.handle("open-file-dialog", async (_, options) => {
   return result.canceled ? null : result.filePaths[0];
 });
 ipcMain.handle("get-all-statuses", async (_event, paths) => {
-  const results = await runStatusModuleAll(paths);
-  return results;
+  try {
+    const results = await runStatusModuleAll(paths);
+    return results;
+  } catch (err) {
+    return { error: err.message };
+  }
 });
 ipcMain.handle("run-status-module", async (event, args) => {
   try {

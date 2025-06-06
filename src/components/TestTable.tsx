@@ -1,24 +1,24 @@
-import React, {useState, useMemo, useEffect} from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTrafikverketData } from "../hooks/useTrafikverketData";
+import { isOverdue } from "../hooks/overdueChecker";
+import { usePinnedRows } from "../context/PinnedRowsContext";
 import FiltersSelect from "./FiltersSelect";
 import { TrafikverketResult } from "@/type/trafikverket";
+import { TriStateMap, FiltersState } from "@/type/filters";
 
+interface TestTableProps {
+  onSelectRow: (row: TrafikverketResult) => void;
+}
 
-const TestTable: React.FC = () => {
+const TestTable: React.FC<TestTableProps> = ({ onSelectRow }) => {
   const data = useTrafikverketData();
-
-  const [selectedFilters, setSelectedFilters] = useState<{
-    status: string[];
-    une_id: string[];
-    bandel: string[];
-    driftsomr: string[];
-    une: string[],
-  }>({
-    status: [],
-    une_id: [],
-    bandel: [],
-    driftsomr: [],
-    une: [],
+  
+  const [selectedFilters, setSelectedFilters] = useState<FiltersState>({
+    status: {},
+    une_id: {},
+    bandel: {},
+    driftsomr: {},
+    une: {},
   });
 
   const [sortConfig, setSortConfig] = useState<{
@@ -26,43 +26,59 @@ const TestTable: React.FC = () => {
     direction: "asc" | "desc";
   }>({ key: "id", direction: "asc" });
 
-  function matchFilters(row: any, filters: typeof selectedFilters): boolean {
-    const matchesStatus =
-      filters.status.length === 0 || filters.status.includes(row.status);
+  function matchTriState(value: string, map: TriStateMap): boolean {
+    const included = Object.entries(map)
+      .filter(([_, state]) => state === "include")
+      .map(([key]) => key);
 
-    const matchesUneId =
-      filters.une_id.length === 0 || filters.une_id.includes(row.une_id);
+    const excluded = Object.entries(map)
+      .filter(([_, state]) => state === "exclude")
+      .map(([key]) => key);
 
-    const matchesBandel =
-      filters.bandel.length === 0 || filters.bandel.includes(row.bandel);
+    if (included.length > 0) return included.includes(value);
+    if (excluded.length > 0) return !excluded.includes(value);
+    return true;
+  }
 
-    const matchesUne =
-      filters.une.length === 0 || filters.une.includes(row.une);
-
-    const matchesDriftsomr =
-      filters.driftsomr.length === 0 || filters.driftsomr.includes(row.driftsomr);
-
-    return matchesStatus && matchesUneId && matchesBandel && matchesDriftsomr && matchesUne;
+  function matchFilters(
+    row: TrafikverketResult,
+    filters: FiltersState
+  ): boolean {
+    return (
+      matchTriState(row.status, filters.status) &&
+      matchTriState(row.une_id, filters.une_id) &&
+      matchTriState(row.bandel, filters.bandel) &&
+      matchTriState(row.driftsomr, filters.driftsomr) &&
+      matchTriState(row.une, filters.une)
+    );
   }
   const columns = [
-    "ID", "SDMS UNE ID", "Bandel", "Status", "Last Test",
-    "Planned 2025", "Next Test", "Days Until",
-    "Km From", "Km To", "Length"
+    "ID",
+    "SDMS UNE ID",
+    "Bandel",
+    "Status",
+    "Last Test",
+    "Planned 2025",
+    "Next Test",
+    "Days Until",
+    "Km From",
+    "Km To",
+    "Length",
   ];
 
   const columnKeyMap: { [label: string]: keyof TrafikverketResult } = {
-  "ID": "id",
-  "SDMS UNE ID": "une_id",
-  "Bandel": "bandel",
-  "Status": "status",
-  "Planned 2025": "planned_date",
-  "Next Test": "next_test_date",
-  "Days Until": "days_until",
-  // ...lägg till fler vid behov
+    ID: "id",
+    "SDMS UNE ID": "une_id_raw",
+    Bandel: "bandel",
+    Status: "status",
+    "Planned 2025": "planned_date",
+    "Next Test": "next_test_date",
+    "Days Until": "days_until",
+    // ...lägg till fler vid behov
   };
 
-  const getAvailableOptions = (
-    key: keyof typeof selectedFilters,
+  const getAvailableOptions = <K extends keyof typeof selectedFilters>(
+    key: K,
     data: any[],
     filters: typeof selectedFilters
   ): string[] => {
@@ -70,9 +86,14 @@ const TestTable: React.FC = () => {
       new Set(
         data
           .filter((row) =>
-            Object.entries(filters).every(([filterKey, selected]) => {
-              if (filterKey === key) return true; // vi filtrerar inte på oss själva
-              return selected.length === 0 || selected.includes(row[filterKey]);
+            Object.entries(filters).every(([filterKey, map]) => {
+              if (filterKey === key) return true; // Låt den vi bygger listan för passera
+              const value = row[filterKey];
+              const filterState = (map as TriStateMap)[value];
+
+              if (filterState === "include") return true;
+              if (filterState === "exclude") return false;
+              return true; // neutral
             })
           )
           .map((row) => row[key])
@@ -81,11 +102,28 @@ const TestTable: React.FC = () => {
     );
   };
 
-  const statusList = useMemo(() => getAvailableOptions("status", data ?? [], selectedFilters), [data, selectedFilters]);
-  const uneIdList = useMemo(() => getAvailableOptions("une_id", data ?? [], selectedFilters), [data, selectedFilters]);
-  const bandelList = useMemo(() => getAvailableOptions("bandel", data ?? [], selectedFilters), [data, selectedFilters]);
-  const driftsomrList = useMemo(() => getAvailableOptions("driftsomr", data ?? [], selectedFilters), [data, selectedFilters]);
-  const uneList = useMemo(() => getAvailableOptions("une", data ?? [], selectedFilters), [data, selectedFilters]);
+  const statusList = useMemo(
+    () => getAvailableOptions("status", data ?? [], selectedFilters),
+    [data, selectedFilters]
+  );
+  const uneIdList = useMemo(
+    () => getAvailableOptions("une_id", data ?? [], selectedFilters),
+    [data, selectedFilters]
+  );
+  const bandelList = useMemo(
+    () => getAvailableOptions("bandel", data ?? [], selectedFilters),
+    [data, selectedFilters]
+  );
+  const driftsomrList = useMemo(
+    () => getAvailableOptions("driftsomr", data ?? [], selectedFilters),
+    [data, selectedFilters]
+  );
+  const uneList = useMemo(
+    () => getAvailableOptions("une", data ?? [], selectedFilters),
+    [data, selectedFilters]
+  );
+
+  const { pinnedIds, togglePin, pinAll, isPinned } = usePinnedRows();
 
   const sortedData = useMemo(() => {
     if (!data) return [];
@@ -103,23 +141,20 @@ const TestTable: React.FC = () => {
     });
 
     return sorted;
-  }, [data, selectedFilters, sortConfig]);
+  }, [data, selectedFilters, sortConfig, pinnedIds]);
 
-  const [pinnedIds, setPinnedIds] = useState<number[]>(() => {
-    const saved = localStorage.getItem("pinnedIds");
-    return saved ? JSON.parse(saved) : [];
-  });
+  
+
+  const pinnedRows = useMemo(() => {
+    if (!data) return [];
+    return data.filter((row) => pinnedIds.includes(row.id));
+  }, [data, pinnedIds]);
 
   useEffect(() => {
-    localStorage.setItem("pinnedList", JSON.stringify(pinnedIds));
-  }, [pinnedIds]);
-
-
-  const handleTogglePin = (id: number) => {
-    setPinnedIds(prev =>
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    );
-  };
+    if (pinnedIds.length && data?.length) {
+      console.log("Pinned rows uppdateras efter båda är redo.");
+    }
+  }, [pinnedIds, data]);
 
   const getDaysUntilColor = (days: number | null) => {
     if (days === null) return "bg-gray-200";
@@ -129,17 +164,17 @@ const TestTable: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-  switch (status) {
-    case "Färdigtestad":
-      return "bg-green-200";
-    case "Delvis testad":
-      return "bg-yellow-200";
-    case "Planerad":
-      return "bg-blue-200";
-    case "Otilldelad":
-      return "bg-gray-300";
-    default:
-      return "bg-white";
+    switch (status) {
+      case "Färdigtestad":
+        return "bg-green-200";
+      case "Delvis testad":
+        return "bg-yellow-200";
+      case "Planerad":
+        return "bg-blue-200";
+      case "Otilldelad":
+        return "bg-gray-300";
+      default:
+        return "bg-white";
     }
   };
 
@@ -151,30 +186,56 @@ const TestTable: React.FC = () => {
     isSticky?: boolean;
     stickyOffset?: number;
     onTogglePin: (id: number) => void;
-  }> = ({ row, isPinned, isSticky = false, stickyOffset= 0, onTogglePin }) => {
+    onClick?: () => void;
+  }> = ({ row, isPinned, isSticky = false, stickyOffset = 0, onTogglePin, onClick }) => {
+    const shouldHighlightRed = isOverdue(row);
+  
     return (
       <tr
-        className={`${isPinned ? "bg-sky-100 z-20" : ""} ${isSticky ? "sticky" : ""}`}
+        className={`${isPinned ? "bg-sky-100 z-20" : ""} ${
+          isSticky ? "sticky" : ""
+        } ${shouldHighlightRed ? "bg-red-300 border-red-300" : ""}`}
         style={isSticky ? { top: `${(stickyOffset ?? 0) * 48 + 40}px` } : {}}
       >
-        <td className="border px-4 py-1">{row.id}</td>
-        <td className="border px-4 py-1">{row.une_id}</td>
-        <td className="border px-4 py-1">{row.bandel}</td>
-        <td className={`border px-4 py-1 font-medium text-center ${getStatusColor(row.status)}`}>{row.status}</td>
-        <td className="border px-4 py-1">{row.last_previous_test ? new Date(row.last_previous_test).toLocaleDateString() : ''}</td>
-        <td className="border px-4 py-1">{row.planned_date ? new Date(row.planned_date).toLocaleDateString() : ''}</td>
-        <td className="border px-4 py-1">{row.next_test_date ? new Date(row.next_test_date).toLocaleDateString() : ''}</td>
-        <td className={`border px-4 py-1 text-center ${getDaysUntilColor(row.days_until)}`}>
+        <td className="border px-2 py-1">{row.id}</td>
+  
+        {/* 👇 Endast denna cell är klickbar */}
+        <td
+          className="border px-2 py-1 text-blue-600 underline cursor-pointer hover:text-blue-800"
+          onClick={onClick}
+          title="Klicka för att visa detaljer"
+        >
+          {row.une_id_raw}
+        </td>
+  
+        <td className="border px-2 py-1">{row.bandel}</td>
+        <td className={`border px-2 py-1 font-medium text-center ${getStatusColor(row.status)}`}>
+          {row.status}
+        </td>
+        <td className="border px-2 py-1">
+          {row.last_previous_test ? new Date(row.last_previous_test).toLocaleDateString() : ""}
+        </td>
+        <td className="border px-2 py-1">
+          {row.planned_date ? new Date(row.planned_date).toLocaleDateString() : ""}
+        </td>
+        <td className="border px-2 py-1">
+          {row.next_test_date ? new Date(row.next_test_date).toLocaleDateString() : ""}
+        </td>
+        <td className={`border px-2 py-1 text-center ${getDaysUntilColor(row.days_until)}`}>
           {row.days_until ?? "-"}
         </td>
-        <td className="border px-4 py-1">{row.km_from}</td>
-        <td className="border px-4 py-1">{row.km_to}</td>
-        <td className="border px-4 py-1">{row.total_length_km}</td>
-        <td className="border px-4 py-1 text-center">
+        <td className="border px-2 py-1">{row.km_from}</td>
+        <td className="border px-2 py-1">{row.km_to}</td>
+        <td className="border px-2 py-1">{row.total_length_km}</td>
+  
+        <td className="border px-2 py-1 text-center">
           <button
             className="text-gray-500 hover:text-gray-900 bg-gray-100"
             title={isPinned ? "Unpin" : "Pin"}
-            onClick={() => onTogglePin(row.id)}
+            onClick={(e) => {
+              e.stopPropagation(); // viktig!
+              onTogglePin(row.id);
+            }}
           >
             {isPinned ? "📌" : "📍"}
           </button>
@@ -184,9 +245,8 @@ const TestTable: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow p-4">
-      <h2 className="text-lg font-semibold mb-2">Test Log</h2>
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-2">
+    <div className="bg-white rounded-xl  shadow p-4">
+      <div className="grid grid-cols-1 h-full md:grid-cols-5 gap-3 mb-2">
         <FiltersSelect
           title="Status"
           options={statusList}
@@ -238,102 +298,108 @@ const TestTable: React.FC = () => {
         />
       </div>
       <div className="overflow-x-auto">
-  {/* Pinned table */}
-  {pinnedIds.length > 0 && (
-  <div className="h-64 overflow-y-scroll mb-4 border border-gray-300 rounded">
-    <table className="min-w-full text-sm table-fixed border-collapse">
-      <thead className="sticky top-0 bg-gray-100 z-10">
-        <tr>
-          {columns.map((label, i) => {
-            const key = columnKeyMap[label];
-            const isSorted = sortConfig.key === key;
-            return (
-              <th
-                key={i}
-                className="border px-4 py-2 whitespace-nowrap cursor-pointer hover:bg-gray-200"
-                onClick={() => {
-                  if (!key) return; // skip unknown keys
-                  setSortConfig((prev) => ({
-                    key,
-                    direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-                  }));
-                }}
-              >
-                {label}
-                {isSorted && (
-                  <span className="ml-1">{sortConfig.direction === "asc" ? "🔼" : "🔽"}</span>
-                )}
-              </th>
-            );
-          })}
-          <th className="border px-4 py-2">📌</th>
-        </tr>
-      </thead>
-      <tbody>
-        {pinnedIds.map((id) => {
-          const row = data.find((r) => r.id === id);
-          return row ? (
-            <TestTableRow
-              key={`pin-${row.id}`}
-              row={row}
-              isPinned={true}
-              onTogglePin={handleTogglePin}
-            />
-          ) : null;
-        })}
-      </tbody>
-    </table>
-  </div>
-)}
+        {/* Pinned table */}
+        {pinnedIds.length > 0 && (
+          <div className="h-64 overflow-y-scroll mb-4 border border-gray-300 rounded">
+            <table className="min-w-full text-sm table-fixed border-collapse">
+              <thead className="sticky top-0 bg-gray-100 z-10">
+                <tr>
+                  {columns.map((label, i) => {
+                    const key = columnKeyMap[label];
+                    const isSorted = sortConfig.key === key;
+                    return (
+                      <th
+                        key={i}
+                        className="border px-4 py-2 whitespace-nowrap cursor-pointer hover:bg-gray-200"
+                        onClick={() => {
+                          if (!key) return; // skip unknown keys
+                          setSortConfig((prev) => ({
+                            key,
+                            direction:
+                              prev.key === key && prev.direction === "asc"
+                                ? "desc"
+                                : "asc",
+                          }));
+                        }}
+                      >
+                        {label}
+                        {isSorted && (
+                          <span className="ml-1">
+                            {sortConfig.direction === "asc" ? "🔼" : "🔽"}
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
+                  <th className="border px-4 py-2">📌</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pinnedRows.map((row) => (
+                  <TestTableRow
+                    key={`pin-${row.id}`}
+                    row={row}
+                    isPinned={true}
+                    onTogglePin={togglePin}
+                    onClick={() => onSelectRow(row)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-  {/* Main scrollable table */}
-  <div className="max-h-[400px] overflow-y-scroll border-t border-gray-300">
-    <table className="min-w-full text-sm table-fixed border-collapse">
-      <thead className="sticky top-0 bg-gray-100 z-10">
-        <tr>
-          {columns.map((label, i) => {
-            const key = columnKeyMap[label];
-            const isSorted = sortConfig.key === key;
-            return (
-              <th
-                key={i}
-                className="border px-4 py-2 whitespace-nowrap cursor-pointer hover:bg-gray-200"
-                onClick={() => {
-                  if (!key) return; // skip unknown keys
-                  setSortConfig((prev) => ({
-                    key,
-                    direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-                  }));
-                }}
-              >
-                {label}
-                {isSorted && (
-                  <span className="ml-1">{sortConfig.direction === "asc" ? "🔼" : "🔽"}</span>
-                )}
-              </th>
-            );
-          })}
-          <th className="border px-4 py-2">📌</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sortedData.map((row) => (
-          <TestTableRow
-            key={row.id}
-            row={row}
-            isPinned={pinnedIds.includes(row.id)}
-            onTogglePin={handleTogglePin}
-          />
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
-
+        {/* Main scrollable table */}
+        <div className="max-h-[400px] overflow-y-scroll border-t border-gray-300">
+          <table className="min-w-full text-sm table-fixed border-collapse">
+            <thead className="sticky top-0 bg-gray-100 z-10">
+              <tr>
+                {columns.map((label, i) => {
+                  const key = columnKeyMap[label];
+                  const isSorted = sortConfig.key === key;
+                  return (
+                    <th
+                      key={i}
+                      className="border px-4 py-2 whitespace-nowrap cursor-pointer hover:bg-gray-200"
+                      onClick={() => {
+                        if (!key) return; // skip unknown keys
+                        setSortConfig((prev) => ({
+                          key,
+                          direction:
+                            prev.key === key && prev.direction === "asc"
+                              ? "desc"
+                              : "asc",
+                        }));
+                      }}
+                    >
+                      {label}
+                      {isSorted && (
+                        <span className="ml-1">
+                          {sortConfig.direction === "asc" ? "🔼" : "🔽"}
+                        </span>
+                      )}
+                    </th>
+                  );
+                })}
+                <th className="border px-4 py-2">📌</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedData.map((row) => (
+                <TestTableRow
+                  key={row.id}
+                  row={row}
+                  isPinned={isPinned(row.id)}
+                  onTogglePin={togglePin}
+                  onClick={() => onSelectRow(row)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
-
-
 
 export default TestTable;

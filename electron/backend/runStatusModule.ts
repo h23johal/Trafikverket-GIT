@@ -17,7 +17,7 @@ export type RunStatusArgs = {
   useExe?: boolean;
 };
 
-export type TrafikverketResult = {
+export type TrafikverketRawResult = {
   id: number;
   une: string;
   driftsomr: string;
@@ -44,7 +44,7 @@ export type TrafikverketResult = {
 };
 
 const isValidResult = (raw: any): raw is Omit<
-  TrafikverketResult,
+  TrafikverketRawResult,
   "planned_date" | "tested_date" | "deadline" | "last_previous_test" | "next_test_date"
 > & {
   planned_date: string | null;
@@ -57,6 +57,7 @@ const isValidResult = (raw: any): raw is Omit<
     typeof raw === "object" &&
     typeof raw.id === "number" &&
     typeof raw.une_id === "string" &&
+    typeof raw.une_id_raw === "string" &&
     typeof raw.une === "string" &&
     typeof raw.driftsomr === "string" &&
     typeof raw.bandel === "string" &&
@@ -83,7 +84,7 @@ const isValidResult = (raw: any): raw is Omit<
   );
 };
 
-const parseTrafikverketResult = (json: ReturnType<typeof JSON.parse>): TrafikverketResult => {
+const parseTrafikverketResult = (json: ReturnType<typeof JSON.parse>): TrafikverketRawResult => {
   const toDate = (d: string | null): Date | null => (d ? new Date(d) : null);
 
   return {
@@ -103,7 +104,7 @@ export function runStatusModule({
   untestedPath,
   planPath,
   useExe = false,
-}: RunStatusArgs): Promise<TrafikverketResult> {
+}: RunStatusArgs): Promise<TrafikverketRawResult> {
   const script = useExe
     ? "trafikverket_status_module.exe"
     : "trafikverket_status_module.py";
@@ -135,7 +136,7 @@ export function runStatusModuleAll({
   untestedPath,
   planPath,
   useExe = false,
-}: Omit<RunStatusArgs, "uneId">): Promise<TrafikverketResult[]> {
+}: Omit<RunStatusArgs, "uneId">): Promise<TrafikverketRawResult[]> {
   const script = useExe
     ? "trafikverket_status_module.exe"
     : "trafikverket_status_module.py";

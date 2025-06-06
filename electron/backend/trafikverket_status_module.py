@@ -102,6 +102,7 @@ def get_segment_status(row_id: int) -> dict:
     
     row = row_df.iloc[0]
     une_id = row["UNE_ID_NORM"]
+    une_id_raw = row["SDMS UNE ID"]
 
     tested_rows = tested_df[tested_df["UNE_ID_NORM"] == une_id][["KmFrom", "KmTo"]]
     untested_rows = untested_df[untested_df["UNE_ID_NORM"] == une_id][["KmFrom", "KmTo"]]
@@ -152,6 +153,7 @@ def get_segment_status(row_id: int) -> dict:
     
     return {
         "une_id": str(une_id),
+        "une_id_raw": str(une_id_raw),
         "driftsomr": str(driftsomr),
         "une": str(une),
         "id": int(row["ID"]),

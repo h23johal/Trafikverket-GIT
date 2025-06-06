@@ -132,8 +132,12 @@ ipcMain.handle('open-file-dialog', async (_, options) => {
 });
 
 ipcMain.handle('get-all-statuses', async (_event, paths) => {
-  const results = await runStatusModuleAll(paths);
-  return results;
+  try {
+    const results = await runStatusModuleAll(paths);
+    return results;
+  } catch (err: any) {
+    return { error: err.message };
+  }
 });
 
 ipcMain.handle("run-status-module", async (event, args) => {
