@@ -1,7 +1,8 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { runStatusModule } from "../backend/runStatusModule";
+import { runStatusModuleAll } from "../backend/runStatusModule";
 import path from 'node:path'
 import os from 'node:os'
 import { update } from './update'
@@ -46,6 +47,8 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 async function createWindow() {
   win = new BrowserWindow({
+    width: 1920,
+    height: 1080,
     title: 'Main window',
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
     webPreferences: {
@@ -122,3 +125,31 @@ ipcMain.handle('open-win', (_, arg) => {
     childWindow.loadFile(indexHtml, { hash: arg })
   }
 })
+
+ipcMain.handle('open-file-dialog', async (_, options) => {
+  const result = await dialog.showOpenDialog(options);
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('get-all-statuses', async (_event, paths) => {
+  const results = await runStatusModuleAll(paths);
+  return results;
+});
+
+ipcMain.handle("run-status-module", async (event, args) => {
+  try {
+    const result = await runStatusModule(args);
+    return result;
+  } catch (err: any) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("run-status-module-all", async (event, args) => {
+  try {
+    const result = await runStatusModuleAll(args);
+    return result;
+  } catch (err: any) {
+    return { error: err.message };
+  }
+});

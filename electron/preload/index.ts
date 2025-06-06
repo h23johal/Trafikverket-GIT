@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { OpenDialogOptions } from 'electron';
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -22,6 +23,17 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // You can expose other APTs you need here.
   // ...
 })
+
+export type PathInputs = {
+  testedPath: string;
+  untestedPath: string;
+  planPath: string;
+};
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  pickFile: (options: OpenDialogOptions) => ipcRenderer.invoke('open-file-dialog', options),
+  getAllStatuses: (paths: PathInputs) => ipcRenderer.invoke("get-all-statuses", paths),
+});
 
 // --------- Preload scripts loading ---------
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {

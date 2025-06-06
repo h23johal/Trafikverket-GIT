@@ -74,9 +74,34 @@ def load_data(tested_path, untested_path, testplan_path):
     testplan_df["UNE_ID_NORM"] = testplan_df["SDMS UNE ID"].apply(normalize_une_id)
     tested_df["UNE_ID_NORM"] = tested_df["SDMS UNA ID"].apply(normalize_une_id)
     untested_df["UNE_ID_NORM"] = untested_df["Report Number"].apply(normalize_une_id)
+    
+    date_cols = [
+        "Tested",
+        "Planned 2025",
+        "Interval, Last date",
+        "Last Previous test",
+        "Next test date.  +/- 2 months based on interval"
+    ]
 
-def get_segment_status(une_id: str) -> dict:
-    une_id = normalize_une_id(une_id)
+    for col in date_cols:
+        if col in testplan_df.columns:
+            testplan_df[col] = pd.to_datetime(testplan_df[col], errors="coerce")
+
+def safe_date(val):
+    if pd.isna(val):
+        return None
+    try:
+        return pd.to_datetime(val).date()
+    except Exception:
+        return None
+
+def get_segment_status(row_id: int) -> dict:
+    row_df = testplan_df[testplan_df["ID"] == row_id]
+    if row_df.empty:
+        return {"id": row_id, "error": "ID not found in testplan"}
+    
+    row = row_df.iloc[0]
+    une_id = row["UNE_ID_NORM"]
 
     tested_rows = tested_df[tested_df["UNE_ID_NORM"] == une_id][["KmFrom", "KmTo"]]
     untested_rows = untested_df[untested_df["UNE_ID_NORM"] == une_id][["KmFrom", "KmTo"]]
@@ -84,31 +109,29 @@ def get_segment_status(une_id: str) -> dict:
     tested_intervals = list(tested_rows.itertuples(index=False, name=None))
     untested_intervals = set(untested_rows.itertuples(index=False, name=None))
     valid_intervals = [seg for seg in tested_intervals if seg not in untested_intervals]
-
-    plan_row = testplan_df[testplan_df["UNE_ID_NORM"] == une_id]
-    if plan_row.empty:
-        return {"une_id": une_id, "error": "UNE ID not found in testplan"}
-
-    row = plan_row.iloc[0]
+    
     bounds = (min(row["KmFrom"], row["KmTo"]), max(row["KmFrom"], row["KmTo"]))
+    une = row["UNE"]
+    driftsomr = row["Driftsomr"]
     total_length = row["Lenght"]
     tested_date = row.get("Tested", None)
     planned_date = row.get("Planned 2025", None)
     deadline_date = row.get("Interval, Last date", None)
-
+    km_from = row["KmFrom"]
+    km_to = row["KmTo"]
     clipped = clip_to_bounds(valid_intervals, bounds)
     merged = merge_intervals(clipped)
     tested_length = sum(b - a for a, b in merged)
     coverage_pct = round((tested_length / total_length) * 100, 2) if total_length else 0.0
 
-    if coverage_pct >= 99.9:
+    if pd.isna(planned_date):
+        status = "Otilldelad"
+    elif coverage_pct >= 99.9:
         status = "Färdigtestad"
     elif coverage_pct > 0:
         status = "Delvis testad"
-    elif pd.notna(planned_date):
-        status = "Planerad"
     else:
-        status = "Otilldelad"
+        status = "Planerad"
 
     deadline_status = "Unknown"
     if pd.notna(deadline_date):
@@ -122,15 +145,29 @@ def get_segment_status(une_id: str) -> dict:
         else:
             deadline_status = "Safe"
 
+    if "ID" not in row or pd.isna(row["ID"]):
+        raise ValueError(f"Missing ID for UNE ID: {une_id}")
+    if "Bandel" not in row or pd.isna(row["Bandel"]):
+        raise ValueError(f"Missing Bandel for UNE ID: {une_id}")
+    
     return {
         "une_id": str(une_id),
+        "driftsomr": str(driftsomr),
+        "une": str(une),
+        "id": int(row["ID"]),
+        "bandel": str(row["Bandel"]),
         "coverage_pct": float(coverage_pct),
         "tested_length_km": float(round(tested_length, 3)),
         "total_length_km": float(round(total_length, 3)),
+        "km_from": float(km_from),
+        "km_to": float(km_to),
         "status": str(status),
-        "planned_date": str(planned_date.date()) if pd.notna(planned_date) else None,
-        "tested_date": str(tested_date.date()) if pd.notna(tested_date) else None,
-        "deadline": str(deadline_date.date()) if pd.notna(deadline_date) else None,
+        "planned_date": str(safe_date(planned_date)) if pd.notna(planned_date) else None,
+        "tested_date": str(safe_date(tested_date)) if pd.notna(tested_date) else None,
+        "last_previous_test": str(safe_date(row.get("Last Previous test"))) if pd.notna(row.get("Last Previous test")) else None,
+        "next_test_date": str(safe_date(row.get("Next test date.  +/- 2 months based on interval"))) if pd.notna(row.get("Next test date.  +/- 2 months based on interval")) else None,
+        "days_until": int(row["Days until out of date"]) if pd.notna(row.get("Days until out of date")) else None,
+        "deadline": str(safe_date(deadline_date)) if pd.notna(deadline_date) else None,
         "deadline_status": str(deadline_status),
         "gaps": [
             {
@@ -142,6 +179,17 @@ def get_segment_status(une_id: str) -> dict:
         ]
     }
 
+def get_all_une_ids():
+    une_ids = testplan_df["UNE_ID_NORM"].dropna().unique().tolist()
+    print(json.dumps(une_ids))
+    
+def get_all_statuses():
+    results = []
+    for id in testplan_df["ID"].dropna().unique():
+        result = get_segment_status(id)
+        results.append(result)
+    print(json.dumps(results, indent=2))
+
 # ----------- CLI Wrapper -----------
 
 if __name__ == "__main__":
@@ -150,16 +198,28 @@ if __name__ == "__main__":
     import sys
 
     parser = argparse.ArgumentParser(description="Get segment status for a given UNE ID")
-    parser.add_argument("une_id", type=str, help="Normalized UNE ID (e.g., LDN3A)")
+    parser.add_argument("id", type=int, nargs="?", help="ID to query from testplan")
     parser.add_argument("--tested", type=str, required=True, help="Path to Tested_Segment_Report file")
     parser.add_argument("--untested", type=str, required=True, help="Path to Untested_Segment_Report file")
     parser.add_argument("--testplan", type=str, required=True, help="Path to Testplan file")
+    parser.add_argument("--all", action="store_true", help="Return status for all UNE IDs")
+    parser.add_argument("--list_ids", action="store_true", help="List all UNE IDs from testplan")
 
     args = parser.parse_args()
 
+    if args.list_ids:
+        load_data(args.tested, args.untested, args.testplan)
+        get_all_une_ids()
+        sys.exit(0)
+    
+    if args.all:
+        load_data(args.tested, args.untested, args.testplan)
+        get_all_statuses()
+        sys.exit(0)
+    
     try:
         load_data(args.tested, args.untested, args.testplan)
-        result = get_segment_status(args.une_id)
+        result = get_segment_status(args.id)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({"error": str(e)}))

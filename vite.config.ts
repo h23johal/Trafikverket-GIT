@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
+import fs from 'fs';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
@@ -26,6 +27,10 @@ export default defineConfig(({ command }) => {
           // Shortcut of `build.lib.entry`
           entry: 'electron/main/index.ts',
           onstart(args) {
+            const src = path.resolve(__dirname, 'electron/backend/trafikverket_status_module.py');
+            const dest = path.resolve(__dirname, 'dist-electron/main/trafikverket_status_module.py');
+            fs.copyFileSync(src, dest);
+            console.log('✅ Copied .py file to dist-electron');
             if (process.env.VSCODE_DEBUG) {
               console.log(/* For `.vscode/.debug.script.mjs` */'[startup] Electron App')
             } else {
