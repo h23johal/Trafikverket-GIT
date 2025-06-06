@@ -111,6 +111,8 @@ def get_segment_status(row_id: int) -> dict:
     valid_intervals = [seg for seg in tested_intervals if seg not in untested_intervals]
     
     bounds = (min(row["KmFrom"], row["KmTo"]), max(row["KmFrom"], row["KmTo"]))
+    une = row["UNE"]
+    driftsomr = row["Driftsomr"]
     total_length = row["Lenght"]
     tested_date = row.get("Tested", None)
     planned_date = row.get("Planned 2025", None)
@@ -150,6 +152,8 @@ def get_segment_status(row_id: int) -> dict:
     
     return {
         "une_id": str(une_id),
+        "driftsomr": str(driftsomr),
+        "une": str(une),
         "id": int(row["ID"]),
         "bandel": str(row["Bandel"]),
         "coverage_pct": float(coverage_pct),

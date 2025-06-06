@@ -19,6 +19,8 @@ export type RunStatusArgs = {
 
 export type TrafikverketResult = {
   id: number;
+  une: string;
+  driftsomr: string;
   une_id: string;
   bandel: string;
   coverage_pct: number;
@@ -55,6 +57,8 @@ const isValidResult = (raw: any): raw is Omit<
     typeof raw === "object" &&
     typeof raw.id === "number" &&
     typeof raw.une_id === "string" &&
+    typeof raw.une === "string" &&
+    typeof raw.driftsomr === "string" &&
     typeof raw.bandel === "string" &&
     typeof raw.coverage_pct === "number" &&
     typeof raw.tested_length_km === "number" &&

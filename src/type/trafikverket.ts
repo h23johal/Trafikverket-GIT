@@ -7,6 +7,8 @@ export type Gap = {
 export type TrafikverketResult = {
   id: number;
   une_id: string;
+  une: string;
+  driftsomr: string;
   bandel: string;
   status: string;
   last_previous_test: string | null;
