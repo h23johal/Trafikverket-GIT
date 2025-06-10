@@ -27,10 +27,22 @@ export default defineConfig(({ command }) => {
           // Shortcut of `build.lib.entry`
           entry: 'electron/main/index.ts',
           onstart(args) {
-            const src = path.resolve(__dirname, 'electron/backend/trafikverket_status_module.py');
-            const dest = path.resolve(__dirname, 'dist-electron/main/trafikverket_status_module.py');
-            fs.copyFileSync(src, dest);
+            // Copy Python script
+            const pySrc = path.resolve(__dirname, 'electron/backend/trafikverket_status_module.py');
+            const pyDest = path.resolve(__dirname, 'dist-electron/main/trafikverket_status_module.py');
+            fs.copyFileSync(pySrc, pyDest);
             console.log('✅ Copied .py file to dist-electron');
+
+            // Copy executable
+            const exeSrc = path.resolve(__dirname, 'trafikverket_status_module.exe');
+            const exeDest = path.resolve(__dirname, 'dist-electron/main/trafikverket_status_module.exe');
+            if (fs.existsSync(exeSrc)) {
+              fs.copyFileSync(exeSrc, exeDest);
+              console.log('✅ Copied .exe file to dist-electron');
+            } else {
+              console.warn('⚠️ Executable not found at:', exeSrc);
+            }
+
             if (process.env.VSCODE_DEBUG) {
               console.log(/* For `.vscode/.debug.script.mjs` */'[startup] Electron App')
             } else {

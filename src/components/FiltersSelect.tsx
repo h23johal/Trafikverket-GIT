@@ -88,10 +88,28 @@ const FiltersSelect: React.FC<FilterSelectProps> = ({
           {open && checkboxList}
         </>
       ) : (
-        <>
-          <div className="font-medium mb-1">{title}</div>
-          {checkboxList}
-        </>
+        <button
+          className="text-white p-2 border rounded w-full text-left bg-blue-600 shadow flex items-center justify-between"
+          onClick={() => toggleOption(options[0])}
+        >
+          {title}
+          <span
+            className={`inline-block w-3 h-3 rounded border border-gray-400 ${
+              selected[options[0]] === "include"
+                ? "bg-green-400"
+                : selected[options[0]] === "exclude"
+                ? "bg-red-400"
+                : "bg-gray-200"
+            }`}
+            title={
+              selected[options[0]] === "include"
+                ? "Inkluderad"
+                : selected[options[0]] === "exclude"
+                ? "Exkluderad"
+                : "Neutral"
+            }
+          />
+        </button>
       )}
     </div>
   );

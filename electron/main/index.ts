@@ -6,6 +6,8 @@ import { runStatusModuleAll } from "../backend/runStatusModule";
 import path from 'node:path'
 import os from 'node:os'
 import { update } from './update'
+import { join } from 'path'
+import type { PathInputs } from '../../src/type/electron-api'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -131,12 +133,20 @@ ipcMain.handle('open-file-dialog', async (_, options) => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-ipcMain.handle('get-all-statuses', async (_event, paths) => {
+ipcMain.handle('get-all-statuses', async (_event, paths: PathInputs) => {
+  console.log('Main process: getAllStatuses called with paths:', paths);
   try {
-    const results = await runStatusModuleAll(paths);
-    return results;
-  } catch (err: any) {
-    return { error: err.message };
+    console.log('Main process: Calling runStatusModuleAll');
+    const result = await runStatusModuleAll({
+      testedPath: paths.testedPath,
+      untestedPath: paths.untestedPath,
+      planPath: paths.planPath
+    });
+    console.log('Main process: runStatusModuleAll completed, result length:', result.length);
+    return result;
+  } catch (error) {
+    console.error('Main process: Error in getAllStatuses:', error);
+    return { error: 'Failed to get status data' };
   }
 });
 

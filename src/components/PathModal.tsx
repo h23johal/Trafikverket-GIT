@@ -1,84 +1,147 @@
-import { useState, useEffect } from 'react';
-import { useStatusData } from '../context/StatusDataContext';
-
-
+import { useState, useEffect } from "react";
+import { useStatusData } from "../context/StatusDataContext";
+import { PathInputs } from "../type/electron-api";
 
 const defaultPaths = {
-  testedPath: '',
-  untestedPath: '',
-  planPath: '',
+  testedPath: "",
+  untestedPath: "",
+  planPath: "",
 };
 
-export default function PathModal() {
-
-  const { setPaths, reloadData } = useStatusData();
-
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [paths, setLocalPaths] = useState(defaultPaths);
+export const PathModal = () => {
+  const { paths, setPaths, reloadData } = useStatusData();
+  const [isOpen, setIsOpen] = useState(false);
+  const [localPaths, setLocalPaths] = useState<PathInputs>(paths);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const cached = localStorage.getItem('cachedPaths');
-    if (cached) setPaths(JSON.parse(cached));
-  }, []);
+    console.log("PathModal: paths updated from context:", paths);
+    setLocalPaths(paths);
+  }, [paths]);
 
-  const pickFile = async (key: keyof typeof paths) => {
-    const path = await window.electronAPI.pickFile({ properties: ['openFile'] });
-    if (path) {
-      setLocalPaths((prev) => ({ ...prev, [key]: path }));
+  const handleSave = async () => {
+    console.log("PathModal: handleSave called with paths:", localPaths);
+    setIsSaving(true);
+    try {
+      await setPaths(localPaths);
+      console.log("PathModal: setPaths completed");
+      setIsOpen(false);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const save = async () => {
-    setLoading(true);
-    try {
-      setPaths(paths);
-      await reloadData();
-      setOpen(false);
-    } catch (error) {
-      alert("Fel vid inläsning.");
-    } finally {
-      setLoading(false);
+  const handleCancel = () => {
+    console.log("PathModal: handleCancel called, resetting to:", paths);
+    setLocalPaths(paths);
+    setIsOpen(false);
+  };
+
+  const handleFileSelect = async (type: keyof PathInputs) => {
+    console.log("PathModal: handleFileSelect called for type:", type);
+    const result = await window.electronAPI.pickFile({
+      properties: ["openFile"],
+    });
+    if (result) {
+      console.log("PathModal: new path selected:", result);
+      setLocalPaths((prev) => ({ ...prev, [type]: result }));
     }
   };
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded shadow">
-        Set Paths
+      <button
+        onClick={() => setIsOpen(true)}
+        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        disabled={isSaving}
+      >
+        {isSaving ? "Saving..." : "Set Paths"}
       </button>
 
-      {open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Select Paths</h2>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+            <h2 className="text-xl font-bold mb-4">Set File Paths</h2>
 
-            {(['testedPath', 'untestedPath', 'planPath'] as const).map((key) => (
-              <div key={key} className="mb-3">
-                <label className="block text-sm mb-1">{key}</label>
-                <div className="flex gap-2">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Tested Path
+                </label>
+                <div className="mt-1 flex">
                   <input
                     type="text"
-                    value={paths[key]}
-                    onChange={(e) => setLocalPaths((p) => ({ ...p, [key]: e.target.value }))}
-                    className="flex-grow border px-2 py-1 rounded"
+                    value={localPaths.testedPath}
+                    readOnly
+                    className="flex-1 p-2 border rounded-l"
                   />
                   <button
-                    onClick={() => pickFile(key)}
-                    className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+                    onClick={() => handleFileSelect("testedPath")}
+                    className="bg-gray-200 px-4 rounded-r hover:bg-gray-300"
+                    disabled={isSaving}
                   >
                     Browse
                   </button>
                 </div>
               </div>
-            ))}
 
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Untested Path
+                </label>
+                <div className="mt-1 flex">
+                  <input
+                    type="text"
+                    value={localPaths.untestedPath}
+                    readOnly
+                    className="flex-1 p-2 border rounded-l"
+                  />
+                  <button
+                    onClick={() => handleFileSelect("untestedPath")}
+                    className="bg-gray-200 px-4 rounded-r hover:bg-gray-300"
+                    disabled={isSaving}
+                  >
+                    Browse
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Plan Path
+                </label>
+                <div className="mt-1 flex">
+                  <input
+                    type="text"
+                    value={localPaths.planPath}
+                    readOnly
+                    className="flex-1 p-2 border rounded-l"
+                  />
+                  <button
+                    onClick={() => handleFileSelect("planPath")}
+                    className="bg-gray-200 px-4 rounded-r hover:bg-gray-300"
+                    disabled={isSaving}
+                  >
+                    Browse
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 border rounded hover:bg-gray-100"
+                disabled={isSaving}
+              >
                 Cancel
               </button>
-              <button onClick={save} className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700">
-                Save
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
@@ -86,4 +149,4 @@ export default function PathModal() {
       )}
     </>
   );
-}
+};

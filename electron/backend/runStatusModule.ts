@@ -1,13 +1,33 @@
 import { exec } from "child_process";
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { app } from 'electron';
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const pythonScriptPath = isDev
-  ? path.join(__dirname, 'trafikverket_status_module.py') // <- dev
-  : path.join(__dirname, '../../../dist-electron/trafikverket_status_module.py'); //<- build
+// Flag to determine whether to use the executable or Python script
+const USE_EXECUTABLE = true;
+
+const getScriptPath = () => {
+  if (app.isPackaged) {
+    // In production, the executable will be in the same directory as the app
+    return path.join(process.cwd(), "trafikverket_status_module.exe");
+  } else {
+    // In development, use the executable in the root directory
+    return path.join(__dirname, "../../trafikverket_status_module.exe");
+  }
+};
+
+const getPythonScriptPath = () => {
+  if (app.isPackaged) {
+    // In production, the script will be in the same directory as the app
+    return path.join(process.cwd(), "trafikverket_status_module.py");
+  } else {
+    // In development, use the script in the backend directory
+    return path.join(__dirname, "trafikverket_status_module.py");
+  }
+};
 
 export type RunStatusArgs = {
   id: number;
@@ -103,13 +123,12 @@ export function runStatusModule({
   testedPath,
   untestedPath,
   planPath,
-  useExe = false,
+  useExe = USE_EXECUTABLE,
 }: RunStatusArgs): Promise<TrafikverketRawResult> {
-  const script = useExe
-    ? "trafikverket_status_module.exe"
-    : "trafikverket_status_module.py";
+  const scriptPath = useExe ? getScriptPath() : getPythonScriptPath();
+  console.log("Using script path:", scriptPath);
 
-  const cmd = `${useExe ? '' : 'python'} "${pythonScriptPath}" --all --tested "${testedPath}" --untested "${untestedPath}" --testplan "${planPath}"`;
+  const cmd = `${useExe ? '' : 'python'} "${scriptPath}" --all --tested "${testedPath}" --untested "${untestedPath}" --testplan "${planPath}"`;
 
   return new Promise((resolve, reject) => {
     exec(cmd, (err, stdout, stderr) => {
@@ -135,40 +154,74 @@ export function runStatusModuleAll({
   testedPath,
   untestedPath,
   planPath,
-  useExe = false,
-}: Omit<RunStatusArgs, "uneId">): Promise<TrafikverketRawResult[]> {
-  const script = useExe
-    ? "trafikverket_status_module.exe"
-    : "trafikverket_status_module.py";
+  useExe = USE_EXECUTABLE,
+}: Omit<RunStatusArgs, "id">): Promise<TrafikverketRawResult[]> {
+  const scriptPath = useExe ? getScriptPath() : getPythonScriptPath();
+  console.log("Using script path:", scriptPath);
 
   const cmd = `${
     useExe ? "" : "python "
-  }"${pythonScriptPath}" --all --tested "${testedPath}" --untested "${untestedPath}" --testplan "${planPath}"`;
+  }"${scriptPath}" --all --tested "${testedPath}" --untested "${untestedPath}" --testplan "${planPath}"`;
 
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) return reject(new Error(stderr.trim() || err.message));
-
-      let parsedJson;
+  const executeWithRetry = async (retries = 3, delay = 1000): Promise<TrafikverketRawResult[]> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        parsedJson = JSON.parse(stdout);
-      } catch {
-        return reject(new Error(`Kunde inte parsa JSON:\n${stdout}`));
+        const result = await new Promise<TrafikverketRawResult[]>((resolve, reject) => {
+          exec(cmd, (err, stdout, stderr) => {
+            if (err) {
+              console.error(`Attempt ${attempt}/${retries} - Script error:`, err);
+              console.error("Script stderr:", stderr);
+              return reject(new Error(stderr.trim() || err.message));
+            }
+
+            if (!stdout.trim()) {
+              return reject(new Error("Script returned empty output"));
+            }
+
+            let parsedJson;
+            try {
+              parsedJson = JSON.parse(stdout);
+            } catch (e) {
+              console.error("Failed to parse output:", stdout);
+              return reject(new Error(`Kunde inte parsa JSON:\n${stdout}`));
+            }
+
+            console.log(`Attempt ${attempt}/${retries} - DEBUG RESPONSE:`, parsedJson);
+
+            if (!Array.isArray(parsedJson)) {
+              console.error("Output is not an array:", parsedJson);
+              return reject(new Error("Svar var inte en array."));
+            }
+
+            if (parsedJson.length === 0) {
+              console.error("Returned empty array");
+              return reject(new Error("Inga resultat hittades."));
+            }
+
+            if (!parsedJson.every(isValidResult)) {
+              const broken = parsedJson.filter((r: any) => !isValidResult(r));
+              console.error("Invalid objects in response:", broken);
+              return reject(new Error("Minst ett objekt har ogiltig struktur."));
+            }
+
+            const results = parsedJson.map(parseTrafikverketResult);
+            console.log(`Attempt ${attempt}/${retries} - Successfully parsed results:`, results.length);
+            resolve(results);
+          });
+        });
+
+        return result;
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+        console.log(`Attempt ${attempt}/${retries} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
+    }
 
-      console.log("DEBUG RESPONSE FROM PYTHON:", parsedJson);
+    throw new Error("All retry attempts failed");
+  };
 
-      if (!Array.isArray(parsedJson)) {
-        return reject(new Error("Svar var inte en array."));
-      }
-
-      if (!parsedJson.every(isValidResult)) {
-        const broken = parsedJson.filter((r: any) => !isValidResult(r));
-        console.log("Ogiltiga objekt:", broken);
-        return reject(new Error("Minst ett objekt har ogiltig struktur."));
-      }
-
-      resolve(parsedJson.map(parseTrafikverketResult));
-    });
-  });
+  return executeWithRetry();
 }

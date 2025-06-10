@@ -8,4 +8,5 @@ export type FiltersState = {
   bandel: TriStateMap;
   driftsomr: TriStateMap;
   une: TriStateMap;
+  tested: TriStateMap;
 };

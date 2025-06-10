@@ -1,9 +1,9 @@
 {
-  "name": "electron-vite-react",
-  "version": "2.2.0",
+  "name": "trafikverket-analys",
+  "version": "2.3.0",
   "main": "dist-electron/main/index.js",
-  "description": "Electron Vite React boilerplate.",
-  "author": "草鞋没号 <308487730@qq.com>",
+  "description": "analys",
+  "author": "Malin Jesper Jonas",
   "license": "MIT",
   "private": true,
   "debug": {
@@ -15,7 +15,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
-    "postbuild": "copy electron\\backend\\trafikverket_status_module.py dist-electron\\",
     "preview": "vite preview",
     "pretest": "vite build --mode=test",
     "test": "vitest run",
@@ -45,18 +44,33 @@
     "vitest": "^2.1.5"
   },
   "build": {
-    "appId": "com.railroadthing.app",
-    "productName": "RailroadThing",
+    "appId": "com.railwaytestmgmt.app",
+    "productName": "Railway Test Management Dashboard",
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "node_modules/**",
+      "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "trafikverket_status_module.exe",
+        "to": "."
+      },
+      {
+        "from": "electron/backend/trafikverket_status_module.py",
+        "to": "."
+      }
     ],
     "directories": {
       "buildResources": "assets"
     },
     "win": {
       "target": "portable",
-      "artifactName": "${productName}-Setup-${version}.exe"
+      "artifactName": "${productName}-alpha-${version}.exe"
+    },
+    "mac": {
+      "target": ["dmg", "zip"]
     },
     "nsis": {
       "oneClick": false,

@@ -1,244 +1,213 @@
-import { app, ipcMain, BrowserWindow, dialog, shell } from "electron";
-import { createRequire } from "node:module";
-import { fileURLToPath as fileURLToPath$1 } from "node:url";
-import { exec } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
-import path$1 from "node:path";
-import os from "node:os";
-const isDev = !!process.env.VITE_DEV_SERVER_URL;
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-const pythonScriptPath = isDev ? path.join(__dirname$1, "trafikverket_status_module.py") : path.join(__dirname$1, "../../../dist-electron/trafikverket_status_module.py");
-const isValidResult = (raw) => {
-  return typeof raw === "object" && typeof raw.id === "number" && typeof raw.une_id === "string" && typeof raw.une_id_raw === "string" && typeof raw.une === "string" && typeof raw.driftsomr === "string" && typeof raw.bandel === "string" && typeof raw.coverage_pct === "number" && typeof raw.tested_length_km === "number" && typeof raw.total_length_km === "number" && typeof raw.km_from === "number" && typeof raw.km_to === "number" && typeof raw.status === "string" && (raw.planned_date === null || typeof raw.planned_date === "string") && (raw.tested_date === null || typeof raw.tested_date === "string") && (raw.last_previous_test === null || typeof raw.last_previous_test === "string") && (raw.next_test_date === null || typeof raw.next_test_date === "string") && (raw.days_until === null || typeof raw.days_until === "number") && (raw.deadline === null || typeof raw.deadline === "string") && typeof raw.deadline_status === "string" && Array.isArray(raw.gaps) && raw.gaps.every(
-    (gap) => typeof gap.start_km === "number" && typeof gap.end_km === "number" && typeof gap.length_km === "number"
-  );
-};
-const parseTrafikverketResult = (json) => {
-  const toDate = (d) => d ? new Date(d) : null;
+import { app as o, ipcMain as u, BrowserWindow as b, dialog as J, shell as B } from "electron";
+import { createRequire as A } from "node:module";
+import { fileURLToPath as F } from "node:url";
+import { exec as T } from "child_process";
+import y from "path";
+import { fileURLToPath as H } from "url";
+import c from "node:path";
+import j from "node:os";
+process.env.VITE_DEV_SERVER_URL;
+const U = y.dirname(H(import.meta.url)), I = !0, O = () => o.isPackaged ? y.join(process.cwd(), "trafikverket_status_module.exe") : y.join(U, "../../trafikverket_status_module.exe"), V = () => o.isPackaged ? y.join(process.cwd(), "trafikverket_status_module.py") : y.join(U, "trafikverket_status_module.py"), P = (e) => typeof e == "object" && typeof e.id == "number" && typeof e.une_id == "string" && typeof e.une_id_raw == "string" && typeof e.une == "string" && typeof e.driftsomr == "string" && typeof e.bandel == "string" && typeof e.coverage_pct == "number" && typeof e.tested_length_km == "number" && typeof e.total_length_km == "number" && typeof e.km_from == "number" && typeof e.km_to == "number" && typeof e.status == "string" && (e.planned_date === null || typeof e.planned_date == "string") && (e.tested_date === null || typeof e.tested_date == "string") && (e.last_previous_test === null || typeof e.last_previous_test == "string") && (e.next_test_date === null || typeof e.next_test_date == "string") && (e.days_until === null || typeof e.days_until == "number") && (e.deadline === null || typeof e.deadline == "string") && typeof e.deadline_status == "string" && Array.isArray(e.gaps) && e.gaps.every(
+  (t) => typeof t.start_km == "number" && typeof t.end_km == "number" && typeof t.length_km == "number"
+), D = (e) => {
+  const t = (n) => n ? new Date(n) : null;
   return {
-    ...json,
-    planned_date: toDate(json.planned_date),
-    tested_date: toDate(json.tested_date),
-    last_previous_test: toDate(json.last_previous_test),
-    next_test_date: toDate(json.next_test_date),
-    deadline: toDate(json.deadline),
-    days_until: json.days_until
+    ...e,
+    planned_date: t(e.planned_date),
+    tested_date: t(e.tested_date),
+    last_previous_test: t(e.last_previous_test),
+    next_test_date: t(e.next_test_date),
+    deadline: t(e.deadline),
+    days_until: e.days_until
   };
 };
-function runStatusModule({
-  id,
-  testedPath,
-  untestedPath,
-  planPath,
-  useExe = false
+function K({
+  id: e,
+  testedPath: t,
+  untestedPath: n,
+  planPath: p,
+  useExe: m = I
 }) {
-  const cmd = `${useExe ? "" : "python"} "${pythonScriptPath}" --all --tested "${testedPath}" --untested "${untestedPath}" --testplan "${planPath}"`;
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) return reject(new Error(stderr.trim() || err.message));
-      let parsedJson;
+  const w = m ? O() : V();
+  console.log("Using script path:", w);
+  const k = `${m ? "" : "python"} "${w}" --all --tested "${t}" --untested "${n}" --testplan "${p}"`;
+  return new Promise((i, f) => {
+    T(k, (a, _, h) => {
+      if (a) return f(new Error(h.trim() || a.message));
+      let l;
       try {
-        parsedJson = JSON.parse(stdout);
+        l = JSON.parse(_);
       } catch {
-        return reject(new Error(`Kunde inte parsa JSON:
-${stdout}`));
+        return f(new Error(`Kunde inte parsa JSON:
+${_}`));
       }
-      if (!isValidResult(parsedJson)) {
-        return reject(new Error("Svar saknar rätt struktur eller innehåller felaktiga typer."));
-      }
-      resolve(parseTrafikverketResult(parsedJson));
+      if (!P(l))
+        return f(new Error("Svar saknar rätt struktur eller innehåller felaktiga typer."));
+      i(D(l));
     });
   });
 }
-function runStatusModuleAll({
-  testedPath,
-  untestedPath,
-  planPath,
-  useExe = false
+function x({
+  testedPath: e,
+  untestedPath: t,
+  planPath: n,
+  useExe: p = I
 }) {
-  const cmd = `${useExe ? "" : "python "}"${pythonScriptPath}" --all --tested "${testedPath}" --untested "${untestedPath}" --testplan "${planPath}"`;
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) return reject(new Error(stderr.trim() || err.message));
-      let parsedJson;
+  const m = p ? O() : V();
+  console.log("Using script path:", m);
+  const w = `${p ? "" : "python "}"${m}" --all --tested "${e}" --untested "${t}" --testplan "${n}"`;
+  return (async (i = 3, f = 1e3) => {
+    for (let a = 1; a <= i; a++)
       try {
-        parsedJson = JSON.parse(stdout);
-      } catch {
-        return reject(new Error(`Kunde inte parsa JSON:
-${stdout}`));
+        return await new Promise((h, l) => {
+          T(w, (E, v, R) => {
+            if (E)
+              return console.error(`Attempt ${a}/${i} - Script error:`, E), console.error("Script stderr:", R), l(new Error(R.trim() || E.message));
+            if (!v.trim())
+              return l(new Error("Script returned empty output"));
+            let d;
+            try {
+              d = JSON.parse(v);
+            } catch {
+              return console.error("Failed to parse output:", v), l(new Error(`Kunde inte parsa JSON:
+${v}`));
+            }
+            if (console.log(`Attempt ${a}/${i} - DEBUG RESPONSE:`, d), !Array.isArray(d))
+              return console.error("Output is not an array:", d), l(new Error("Svar var inte en array."));
+            if (d.length === 0)
+              return console.error("Returned empty array"), l(new Error("Inga resultat hittades."));
+            if (!d.every(P)) {
+              const $ = d.filter((q) => !P(q));
+              return console.error("Invalid objects in response:", $), l(new Error("Minst ett objekt har ogiltig struktur."));
+            }
+            const S = d.map(D);
+            console.log(`Attempt ${a}/${i} - Successfully parsed results:`, S.length), h(S);
+          });
+        });
+      } catch (_) {
+        if (a === i)
+          throw _;
+        console.log(`Attempt ${a}/${i} failed, retrying in ${f}ms...`), await new Promise((h) => setTimeout(h, f));
       }
-      console.log("DEBUG RESPONSE FROM PYTHON:", parsedJson);
-      if (!Array.isArray(parsedJson)) {
-        return reject(new Error("Svar var inte en array."));
-      }
-      if (!parsedJson.every(isValidResult)) {
-        const broken = parsedJson.filter((r) => !isValidResult(r));
-        console.log("Ogiltiga objekt:", broken);
-        return reject(new Error("Minst ett objekt har ogiltig struktur."));
-      }
-      resolve(parsedJson.map(parseTrafikverketResult));
-    });
-  });
+    throw new Error("All retry attempts failed");
+  })();
 }
-const { autoUpdater } = createRequire(import.meta.url)("electron-updater");
-function update(win2) {
-  autoUpdater.autoDownload = false;
-  autoUpdater.disableWebInstaller = false;
-  autoUpdater.allowDowngrade = false;
-  autoUpdater.on("checking-for-update", function() {
-  });
-  autoUpdater.on("update-available", (arg) => {
-    win2.webContents.send("update-can-available", { update: true, version: app.getVersion(), newVersion: arg == null ? void 0 : arg.version });
-  });
-  autoUpdater.on("update-not-available", (arg) => {
-    win2.webContents.send("update-can-available", { update: false, version: app.getVersion(), newVersion: arg == null ? void 0 : arg.version });
-  });
-  ipcMain.handle("check-update", async () => {
-    if (!app.isPackaged) {
-      const error = new Error("The update feature is only available after the package.");
-      return { message: error.message, error };
+const { autoUpdater: s } = A(import.meta.url)("electron-updater");
+function z(e) {
+  s.autoDownload = !1, s.disableWebInstaller = !1, s.allowDowngrade = !1, s.on("checking-for-update", function() {
+  }), s.on("update-available", (t) => {
+    e.webContents.send("update-can-available", { update: !0, version: o.getVersion(), newVersion: t == null ? void 0 : t.version });
+  }), s.on("update-not-available", (t) => {
+    e.webContents.send("update-can-available", { update: !1, version: o.getVersion(), newVersion: t == null ? void 0 : t.version });
+  }), u.handle("check-update", async () => {
+    if (!o.isPackaged) {
+      const t = new Error("The update feature is only available after the package.");
+      return { message: t.message, error: t };
     }
     try {
-      return await autoUpdater.checkForUpdatesAndNotify();
-    } catch (error) {
-      return { message: "Network error", error };
+      return await s.checkForUpdatesAndNotify();
+    } catch (t) {
+      return { message: "Network error", error: t };
     }
-  });
-  ipcMain.handle("start-download", (event) => {
-    startDownload(
-      (error, progressInfo) => {
-        if (error) {
-          event.sender.send("update-error", { message: error.message, error });
-        } else {
-          event.sender.send("download-progress", progressInfo);
-        }
+  }), u.handle("start-download", (t) => {
+    G(
+      (n, p) => {
+        n ? t.sender.send("update-error", { message: n.message, error: n }) : t.sender.send("download-progress", p);
       },
       () => {
-        event.sender.send("update-downloaded");
+        t.sender.send("update-downloaded");
       }
     );
+  }), u.handle("quit-and-install", () => {
+    s.quitAndInstall(!1, !0);
   });
-  ipcMain.handle("quit-and-install", () => {
-    autoUpdater.quitAndInstall(false, true);
-  });
 }
-function startDownload(callback, complete) {
-  autoUpdater.on("download-progress", (info) => callback(null, info));
-  autoUpdater.on("error", (error) => callback(error, null));
-  autoUpdater.on("update-downloaded", complete);
-  autoUpdater.downloadUpdate();
+function G(e, t) {
+  s.on("download-progress", (n) => e(null, n)), s.on("error", (n) => e(n, null)), s.on("update-downloaded", t), s.downloadUpdate();
 }
-createRequire(import.meta.url);
-const __dirname = path$1.dirname(fileURLToPath$1(import.meta.url));
-process.env.APP_ROOT = path$1.join(__dirname, "../..");
-const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path$1.join(process.env.APP_ROOT, "dist");
-const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-if (os.release().startsWith("6.1")) app.disableHardwareAcceleration();
-if (process.platform === "win32") app.setAppUserModelId(app.getName());
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
-  process.exit(0);
-}
-let win = null;
-const preload = path$1.join(__dirname, "../preload/index.mjs");
-const indexHtml = path$1.join(RENDERER_DIST, "index.html");
-async function createWindow() {
-  win = new BrowserWindow({
+A(import.meta.url);
+const M = c.dirname(F(import.meta.url));
+process.env.APP_ROOT = c.join(M, "../..");
+const oe = c.join(process.env.APP_ROOT, "dist-electron"), L = c.join(process.env.APP_ROOT, "dist"), g = process.env.VITE_DEV_SERVER_URL;
+process.env.VITE_PUBLIC = g ? c.join(process.env.APP_ROOT, "public") : L;
+j.release().startsWith("6.1") && o.disableHardwareAcceleration();
+process.platform === "win32" && o.setAppUserModelId(o.getName());
+o.requestSingleInstanceLock() || (o.quit(), process.exit(0));
+let r = null;
+const W = c.join(M, "../preload/index.mjs"), C = c.join(L, "index.html");
+async function N() {
+  r = new b({
     width: 1920,
     height: 1080,
     title: "Main window",
-    icon: path$1.join(process.env.VITE_PUBLIC, "favicon.ico"),
+    icon: c.join(process.env.VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
-      preload
+      preload: W
       // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
       // nodeIntegration: true,
       // Consider using contextBridge.exposeInMainWorld
       // Read more on https://www.electronjs.org/docs/latest/tutorial/context-isolation
       // contextIsolation: false,
     }
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools();
-  } else {
-    win.loadFile(indexHtml);
-  }
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  });
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https:")) shell.openExternal(url);
-    return { action: "deny" };
-  });
-  update(win);
+  }), g ? (r.loadURL(g), r.webContents.openDevTools()) : r.loadFile(C), r.webContents.on("did-finish-load", () => {
+    r == null || r.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  }), r.webContents.setWindowOpenHandler(({ url: e }) => (e.startsWith("https:") && B.openExternal(e), { action: "deny" })), z(r);
 }
-app.whenReady().then(createWindow);
-app.on("window-all-closed", () => {
-  win = null;
-  if (process.platform !== "darwin") app.quit();
+o.whenReady().then(N);
+o.on("window-all-closed", () => {
+  r = null, process.platform !== "darwin" && o.quit();
 });
-app.on("second-instance", () => {
-  if (win) {
-    if (win.isMinimized()) win.restore();
-    win.focus();
-  }
+o.on("second-instance", () => {
+  r && (r.isMinimized() && r.restore(), r.focus());
 });
-app.on("activate", () => {
-  const allWindows = BrowserWindow.getAllWindows();
-  if (allWindows.length) {
-    allWindows[0].focus();
-  } else {
-    createWindow();
-  }
+o.on("activate", () => {
+  const e = b.getAllWindows();
+  e.length ? e[0].focus() : N();
 });
-ipcMain.handle("open-win", (_, arg) => {
-  const childWindow = new BrowserWindow({
+u.handle("open-win", (e, t) => {
+  const n = new b({
     webPreferences: {
-      preload,
-      nodeIntegration: true,
-      contextIsolation: false
+      preload: W,
+      nodeIntegration: !0,
+      contextIsolation: !1
     }
   });
-  if (VITE_DEV_SERVER_URL) {
-    childWindow.loadURL(`${VITE_DEV_SERVER_URL}#${arg}`);
-  } else {
-    childWindow.loadFile(indexHtml, { hash: arg });
+  g ? n.loadURL(`${g}#${t}`) : n.loadFile(C, { hash: t });
+});
+u.handle("open-file-dialog", async (e, t) => {
+  const n = await J.showOpenDialog(t);
+  return n.canceled ? null : n.filePaths[0];
+});
+u.handle("get-all-statuses", async (e, t) => {
+  console.log("Main process: getAllStatuses called with paths:", t);
+  try {
+    console.log("Main process: Calling runStatusModuleAll");
+    const n = await x({
+      testedPath: t.testedPath,
+      untestedPath: t.untestedPath,
+      planPath: t.planPath
+    });
+    return console.log("Main process: runStatusModuleAll completed, result length:", n.length), n;
+  } catch (n) {
+    return console.error("Main process: Error in getAllStatuses:", n), { error: "Failed to get status data" };
   }
 });
-ipcMain.handle("open-file-dialog", async (_, options) => {
-  const result = await dialog.showOpenDialog(options);
-  return result.canceled ? null : result.filePaths[0];
-});
-ipcMain.handle("get-all-statuses", async (_event, paths) => {
+u.handle("run-status-module", async (e, t) => {
   try {
-    const results = await runStatusModuleAll(paths);
-    return results;
-  } catch (err) {
-    return { error: err.message };
+    return await K(t);
+  } catch (n) {
+    return { error: n.message };
   }
 });
-ipcMain.handle("run-status-module", async (event, args) => {
+u.handle("run-status-module-all", async (e, t) => {
   try {
-    const result = await runStatusModule(args);
-    return result;
-  } catch (err) {
-    return { error: err.message };
-  }
-});
-ipcMain.handle("run-status-module-all", async (event, args) => {
-  try {
-    const result = await runStatusModuleAll(args);
-    return result;
-  } catch (err) {
-    return { error: err.message };
+    return await x(t);
+  } catch (n) {
+    return { error: n.message };
   }
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  oe as MAIN_DIST,
+  L as RENDERER_DIST,
+  g as VITE_DEV_SERVER_URL
 };
-//# sourceMappingURL=index.js.map

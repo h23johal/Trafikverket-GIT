@@ -5,24 +5,24 @@ export type Gap = {
 };
 
 export type TrafikverketResult = {
-  id: number;
+  id: string;
   une_id: string;
   une_id_raw: string;
-  une: string;
-  driftsomr: string;
-  bandel: string;
   status: string;
+  deadline_status: string;
+  days_until: number | null;
+  deadline: string | null;
+  tested_date: string | null;
   last_previous_test: string | null;
   planned_date: string | null;
   next_test_date: string | null;
-  days_until: number | null;
-  deadline: string | null;
-  deadline_status: string;
-  tested_date: string | null;
-  coverage_pct: number;
-  tested_length_km: number;
-  total_length_km: number;
   km_from: number;
   km_to: number;
+  total_length_km: number;
+  bandel: string;
+  driftsomr: string;
+  une: string;
+  coverage_pct: number;
+  tested_length_km: number;
   gaps: Gap[];
 };

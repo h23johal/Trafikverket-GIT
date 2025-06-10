@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import re
+import gc
 
 # Globals
 tested_df = None
@@ -63,18 +64,29 @@ def find_gaps_within_bounds(merged_intervals, bounds):
 
 def load_data(tested_path, untested_path, testplan_path):
     global tested_df, untested_df, testplan_df
+    
+    # Clear existing data
+    tested_df = None
+    untested_df = None
+    testplan_df = None
+    gc.collect()  # Force garbage collection
+    
+    # Load new data
     tested_df = pd.read_excel(tested_path)
     untested_df = pd.read_excel(untested_path)
     testplan_df = pd.read_excel(testplan_path)
 
+    # Clean column names
     tested_df.columns = tested_df.columns.str.strip()
     untested_df.columns = untested_df.columns.str.strip()
     testplan_df.columns = testplan_df.columns.str.strip()
 
+    # Normalize UNE IDs
     testplan_df["UNE_ID_NORM"] = testplan_df["SDMS UNE ID"].apply(normalize_une_id)
     tested_df["UNE_ID_NORM"] = tested_df["SDMS UNA ID"].apply(normalize_une_id)
     untested_df["UNE_ID_NORM"] = untested_df["Report Number"].apply(normalize_une_id)
     
+    # Convert date columns
     date_cols = [
         "Tested",
         "Planned 2025",
@@ -86,6 +98,14 @@ def load_data(tested_path, untested_path, testplan_path):
     for col in date_cols:
         if col in testplan_df.columns:
             testplan_df[col] = pd.to_datetime(testplan_df[col], errors="coerce")
+
+    # Verify data was loaded correctly
+    if tested_df.empty or untested_df.empty or testplan_df.empty:
+        raise ValueError("One or more data files are empty")
+
+    # Verify UNE ID normalization
+    if testplan_df["UNE_ID_NORM"].isna().all():
+        raise ValueError("Failed to normalize UNE IDs in testplan")
 
 def safe_date(val):
     if pd.isna(val):

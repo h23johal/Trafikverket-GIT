@@ -33,7 +33,8 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
             SDMS UNE ID: {segment.une_id_raw}
           </h3>
           <p className="text-sm text-gray-500">
-            Driftsområde: {segment.driftsomr} · Bandel: {segment.bandel}· UNE: {segment.une}
+            Driftsområde: {segment.driftsomr} · Bandel: {segment.bandel}· UNE:{" "}
+            {segment.une}
           </p>
         </div>
         {onClose && (
@@ -83,6 +84,9 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
         </div>
         <div>
           <strong>Planerat test:</strong> {formatDate(segment.planned_date)}
+        </div>
+        <div>
+          <strong>Testad:</strong> {formatDate(segment.tested_date)}
         </div>
         {segment.gaps.length > 0 && (
           <div className="col-span-2">
