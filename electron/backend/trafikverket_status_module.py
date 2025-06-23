@@ -177,7 +177,7 @@ def get_segment_status(row_id: int) -> dict:
         "driftsomr": str(driftsomr),
         "une": str(une),
         "id": int(row["ID"]),
-        "bandel": str(row["Bandel"]),
+        "bandel": int(row["Bandel"]),
         "coverage_pct": float(coverage_pct),
         "tested_length_km": float(round(tested_length, 3)),
         "total_length_km": float(round(total_length, 3)),

@@ -13,7 +13,7 @@ interface TestTableProps {
 
 const TestTable: React.FC<TestTableProps> = ({ onSelectRow }) => {
   const { data, loading, error } = useStatusData();
-  const { pinnedIds } = usePinnedRows();
+  const { pinnedIds, togglePin, pinAll, isPinned, unpinAll } = usePinnedRows();
   const [selectedFilters, setSelectedFilters] = useState<FiltersState>({
     status: {},
     une_id: {},
@@ -85,7 +85,7 @@ const TestTable: React.FC<TestTableProps> = ({ onSelectRow }) => {
     return (
       matchTriState(row.status, filters.status) &&
       matchTriState(row.une_id, filters.une_id) &&
-      matchTriState(row.bandel, filters.bandel) &&
+      matchTriState(row.bandel.toString(), filters.bandel) &&
       matchTriState(row.driftsomr, filters.driftsomr) &&
       matchTriState(row.une, filters.une) &&
       matchTriState(row.tested_date ? "tested" : "not_tested", filters.tested)
@@ -171,8 +171,6 @@ const TestTable: React.FC<TestTableProps> = ({ onSelectRow }) => {
     () => ["tested"], // Just one option since we use tri-state
     []
   );
-
-  const { togglePin, pinAll, isPinned } = usePinnedRows();
 
   const sortedData = useMemo(() => {
     if (!data) return [];
@@ -463,6 +461,14 @@ const TestTable: React.FC<TestTableProps> = ({ onSelectRow }) => {
         {/* Pinned table */}
         {pinnedIds.length > 0 && (
           <div className="h-64 overflow-y-scroll mb-4 border border-gray-300 rounded [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-500">
+            <div className="flex justify-end p-2">
+              <button
+                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                onClick={() => unpinAll(pinnedIds)}
+              >
+                Unpin All
+              </button>
+            </div>
             <table className="min-w-full text-sm table-fixed border-collapse">
               <thead className="sticky top-0 bg-gray-100 z-10">
                 <tr>

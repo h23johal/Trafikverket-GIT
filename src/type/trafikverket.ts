@@ -19,7 +19,7 @@ export type TrafikverketResult = {
   km_from: number;
   km_to: number;
   total_length_km: number;
-  bandel: string;
+  bandel: number;
   driftsomr: string;
   une: string;
   coverage_pct: number;

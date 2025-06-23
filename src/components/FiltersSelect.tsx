@@ -46,10 +46,21 @@ const FiltersSelect: React.FC<FilterSelectProps> = ({
     <div
       className={`${
         isDropdown
-          ? "absolute z-20 bg-white border shadow rounded mt-1 max-h-64 overflow-auto text-left"
+          ? "absolute z-20 bg-white border shadow rounded mt-1 max-h-64 overflow-auto text-left [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-500"
           : "grid gap-2"
       } w-full`}
     >
+      {isDropdown && (
+        <div className="px-4 py-2 border-b flex justify-end">
+          <button
+            className="text-xs text-blue-600 hover:underline bg-gray-100 rounded px-2 py-1"
+            onClick={() => onChange({})}
+            type="button"
+          >
+            Reset
+          </button>
+        </div>
+      )}
       {options.map((option) => (
         <label key={option} className="block px-4 py-2 hover:bg-gray-100">
           <span
@@ -80,10 +91,15 @@ const FiltersSelect: React.FC<FilterSelectProps> = ({
       {isDropdown ? (
         <>
           <button
-            className="text-white p-2 border rounded w-full text-left bg-blue-600 shadow flex items-center justify-between"
+            className="text-white p-2 border rounded w-full text-left bg-blue-600 shadow flex items-center justify-between relative"
             onClick={() => setOpen((prev) => !prev)}
           >
-            {title}
+            <span>{title}</span>
+            {Object.keys(selected).length > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full absolute right-2 top-2">
+                {Object.keys(selected).length}
+              </span>
+            )}
           </button>
           {open && checkboxList}
         </>

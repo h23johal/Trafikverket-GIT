@@ -11,6 +11,7 @@ import { usePinnedRows } from "./context/PinnedRowsContext";
 import SegmentDetailCard from "./components/SegmentDetailCard";
 import { PinControllerProvider } from "./context/PinControllerContext";
 import { TrafikverketResult } from "@/type/trafikverket";
+import UpdaterComponent from "./components/UpdaterComponent";
 
 function AppContent() {
   const [selectedRow, setSelectedRow] = useState<TrafikverketResult | null>(
@@ -52,16 +53,20 @@ function AppContent() {
 
   return (
     <PinControllerProvider data={data ?? []}>
-      <div className="p-6 grid grid-cols-4 space-y-3 bg-gray-100 w-[90vw]">
-        <div className="grid grid-cols-6 col-span-4">
+      <div className="p-6 grid grid-cols-10 space-y-3 bg-gray-100 w-[95vw]">
+        <div className="grid grid-cols-6 col-span-10">
           <div className="col-span-1">
             <PathModal />
           </div>
           <h1 className="text-xl font-semibold col-span-4">
             Railway Test Management Dashboard
           </h1>
+          <div className="p-6">
+            <UpdaterComponent />
+          </div>
         </div>
-        <div className="col-span-4 mx-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+        
+        <div className="col-span-10 mx-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
           <StatusCard
             title="Total Sections"
             count={totalSections}
@@ -115,10 +120,10 @@ function AppContent() {
             hoverColor="hover:bg-red-200"
           />
         </div>
-        <div className="col-span-3 mx-2">
+        <div className="col-span-8 mx-2">
           <TestTable onSelectRow={setSelectedRow} />
         </div>
-        <div className="col-span-1 mx-2 h-full">
+        <div className="col-span-2 mx-2 h-full">
           <SegmentDetailCard
             segment={selectedRow}
             onClose={() => setSelectedRow(null)}

@@ -7,7 +7,7 @@ const isDev = !!process.env.VITE_DEV_SERVER_URL;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Flag to determine whether to use the executable or Python script
-const USE_EXECUTABLE = true;
+const USE_EXECUTABLE = false;
 
 const getScriptPath = () => {
   if (app.isPackaged) {
@@ -42,7 +42,7 @@ export type TrafikverketRawResult = {
   une: string;
   driftsomr: string;
   une_id: string;
-  bandel: string;
+  bandel: number;
   coverage_pct: number;
   tested_length_km: number;
   total_length_km: number;
@@ -80,7 +80,7 @@ const isValidResult = (raw: any): raw is Omit<
     typeof raw.une_id_raw === "string" &&
     typeof raw.une === "string" &&
     typeof raw.driftsomr === "string" &&
-    typeof raw.bandel === "string" &&
+    typeof raw.bandel === "number" &&
     typeof raw.coverage_pct === "number" &&
     typeof raw.tested_length_km === "number" &&
     typeof raw.total_length_km === "number" &&
