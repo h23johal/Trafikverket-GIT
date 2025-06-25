@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 
 type PinnedRowsContextType = {
   pinnedIds: string[];
@@ -22,13 +28,16 @@ export const PinnedRowsProvider = ({
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Create a Set for O(1) lookup performance
+  const pinnedIdsSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
+
   useEffect(() => {
     localStorage.setItem("pinnedList", JSON.stringify(pinnedIds));
   }, [pinnedIds]);
 
   const togglePin = (id: string) => {
     setPinnedIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+      pinnedIdsSet.has(id) ? prev.filter((p) => p !== id) : [...prev, id]
     );
   };
 
@@ -37,10 +46,11 @@ export const PinnedRowsProvider = ({
   };
 
   const unpinAll = (ids: string[]) => {
-    setPinnedIds((prev) => prev.filter((id) => !ids.includes(id)));
+    const idsToRemove = new Set(ids);
+    setPinnedIds((prev) => prev.filter((id) => !idsToRemove.has(id)));
   };
 
-  const isPinned = (id: string) => pinnedIds.includes(id);
+  const isPinned = (id: string) => pinnedIdsSet.has(id);
 
   return (
     <PinnedRowsContext.Provider

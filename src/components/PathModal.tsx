@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useStatusData } from "../context/StatusDataContext";
 import { PathInputs } from "../type/electron-api";
+import Button from "./Button";
 
 const defaultPaths = {
   testedPath: "",
@@ -50,22 +51,25 @@ export const PathModal = () => {
 
   return (
     <>
-      <button
+      <Button
         onClick={() => setIsOpen(true)}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        variant="primary"
         disabled={isSaving}
+        className="btn-overlay transition-all duration-200 ease-in-out border transition-colors"
       >
         {isSaving ? "Saving..." : "Set Paths"}
-      </button>
+      </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h2 className="text-xl font-bold mb-4">Set File Paths</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96 border border-gray-200 dark:border-gray-600">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+              Set File Paths
+            </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Tested Path
                 </label>
                 <div className="mt-1 flex">
@@ -73,11 +77,11 @@ export const PathModal = () => {
                     type="text"
                     value={localPaths.testedPath}
                     readOnly
-                    className="flex-1 p-2 border rounded-l"
+                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-l bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <button
                     onClick={() => handleFileSelect("testedPath")}
-                    className="bg-gray-200 px-4 rounded-r hover:bg-gray-300"
+                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-4 rounded-r transition-all duration-200 ease-in-out shadow-md hover:shadow-lg"
                     disabled={isSaving}
                   >
                     Browse
@@ -86,7 +90,7 @@ export const PathModal = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Untested Path
                 </label>
                 <div className="mt-1 flex">
@@ -94,11 +98,11 @@ export const PathModal = () => {
                     type="text"
                     value={localPaths.untestedPath}
                     readOnly
-                    className="flex-1 p-2 border rounded-l"
+                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-l bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <button
                     onClick={() => handleFileSelect("untestedPath")}
-                    className="bg-gray-200 px-4 rounded-r hover:bg-gray-300"
+                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-4 rounded-r transition-all duration-200 ease-in-out shadow-md hover:shadow-lg"
                     disabled={isSaving}
                   >
                     Browse
@@ -107,7 +111,7 @@ export const PathModal = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Plan Path
                 </label>
                 <div className="mt-1 flex">
@@ -115,11 +119,11 @@ export const PathModal = () => {
                     type="text"
                     value={localPaths.planPath}
                     readOnly
-                    className="flex-1 p-2 border rounded-l"
+                    className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-l bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <button
                     onClick={() => handleFileSelect("planPath")}
-                    className="bg-gray-200 px-4 rounded-r hover:bg-gray-300"
+                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-4 rounded-r transition-all duration-200 ease-in-out shadow-md hover:shadow-lg"
                     disabled={isSaving}
                   >
                     Browse
@@ -128,21 +132,21 @@ export const PathModal = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end space-x-3">
+            <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 border rounded hover:bg-gray-100"
+                className="px-4 py-2 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 transition-all duration-200 shadow-sm hover:shadow-md"
                 disabled={isSaving}
               >
                 Cancel
               </button>
-              <button
+              <Button
                 onClick={handleSave}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                variant="success"
                 disabled={isSaving}
               >
                 {isSaving ? "Saving..." : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

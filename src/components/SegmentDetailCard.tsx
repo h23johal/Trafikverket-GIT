@@ -9,7 +9,7 @@ type Props = {
 const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
   if (!segment) {
     return (
-      <div className="p-4 border rounded bg-gray-100 w-full text-gray-500 text-sm">
+      <div className="p-4 border border-gray-200 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm">
         Välj en rad i tabellen för att se detaljer här.
       </div>
     );
@@ -20,19 +20,19 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
 
   const progressColor =
     segment.coverage_pct >= 100
-      ? "bg-green-500"
+      ? "bg-emerald-500"
       : segment.coverage_pct >= 70
-      ? "bg-yellow-500"
+      ? "bg-amber-500"
       : "bg-red-500";
 
   return (
-    <div className="p-6 border rounded-xl w-full bg-white shadow-lg mt-6 space-y-4">
+    <div className="border p-4 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 shadow-lg mt-6">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-xl font-semibold text-gray-800">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
             SDMS UNE ID: {segment.une_id_raw}
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Driftsområde: {segment.driftsomr} · Bandel: {segment.bandel}· UNE:{" "}
             {segment.une}
           </p>
@@ -40,7 +40,7 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
         {onClose && (
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 transition bg-gray-500"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-all duration-200 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2 -m-2 border-0"
             title="Stäng"
           >
             ✕
@@ -50,11 +50,11 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
 
       {/* Coverage */}
       <div className="space-y-1">
-        <div className="flex justify-between text-sm font-medium text-gray-700">
+        <div className="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300">
           <span>Täckning</span>
           <span>{segment.coverage_pct.toFixed(1)}%</span>
         </div>
-        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
             className={`h-full ${progressColor}`}
             style={{ width: `${segment.coverage_pct}%` }}
@@ -63,7 +63,7 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
       </div>
 
       {/* Info */}
-      <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
+      <div className="grid grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
         <div>
           <strong>Status:</strong> {segment.status}
         </div>
@@ -91,7 +91,7 @@ const SegmentDetailCard: React.FC<Props> = ({ segment, onClose }) => {
         {segment.gaps.length > 0 && (
           <div className="col-span-2">
             <strong>Luckor:</strong>
-            <ul className="mt-1 ml-4 list-disc text-sm text-gray-600 space-y-0.5">
+            <ul className="mt-1 ml-4 list-disc text-sm text-gray-600 dark:text-gray-400 space-y-0.5">
               {segment.gaps.map((gap, idx) => (
                 <li key={idx}>
                   {gap.start_km.toFixed(2)} km – {gap.end_km.toFixed(2)} km (

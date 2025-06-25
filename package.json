@@ -1,6 +1,6 @@
 {
   "name": "trafikverket-analys",
-  "version": "2.3.0",
+  "version": "1.0.0",
   "main": "dist-electron/main/index.js",
   "description": "analys",
   "author": "Malin Jesper Jonas",
@@ -22,7 +22,9 @@
     "dist": "electron-builder"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "exceljs": "^4.4.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
@@ -70,7 +72,10 @@
       "artifactName": "${productName}-alpha-${version}.exe"
     },
     "mac": {
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "nsis": {
       "oneClick": false,

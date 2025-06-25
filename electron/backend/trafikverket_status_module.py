@@ -6,6 +6,7 @@ import numpy as np
 from datetime import datetime
 import re
 import gc
+import json
 
 # Globals
 tested_df = None
@@ -24,7 +25,11 @@ def normalize_une_id(une_id) -> str:
 def merge_intervals(intervals):
     if not intervals:
         return []
-    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    
+    # Normalize all intervals to ascending order for merging
+    normalized = [normalize_interval(interval) for interval in intervals]
+    sorted_intervals = sorted(normalized, key=lambda x: x[0])
+    
     merged = [sorted_intervals[0]]
     for start, end in sorted_intervals[1:]:
         last_start, last_end = merged[-1]
@@ -32,14 +37,22 @@ def merge_intervals(intervals):
             merged[-1] = (last_start, max(last_end, end))
         else:
             merged.append((start, end))
+    
     return merged
+
+def normalize_interval(interval):
+    """Normalize interval to ascending order (start <= end)"""
+    start, end = interval
+    return (min(start, end), max(start, end))
 
 def clip_to_bounds(intervals, bounds):
     start_bound, end_bound = bounds
     clipped = []
     for a, b in intervals:
-        overlap_start = max(a, start_bound)
-        overlap_end = min(b, end_bound)
+        # Normalize interval to ascending order for calculation
+        interval_start, interval_end = normalize_interval((a, b))
+        overlap_start = max(interval_start, start_bound)
+        overlap_end = min(interval_end, end_bound)
         if overlap_start < overlap_end:
             clipped.append((overlap_start, overlap_end))
     return clipped
@@ -123,30 +136,90 @@ def get_segment_status(row_id: int) -> dict:
     row = row_df.iloc[0]
     une_id = row["UNE_ID_NORM"]
     une_id_raw = row["SDMS UNE ID"]
+    planned_date = row.get("Planned 2025", None)
 
-    tested_rows = tested_df[tested_df["UNE_ID_NORM"] == une_id][["KmFrom", "KmTo"]]
-    untested_rows = untested_df[untested_df["UNE_ID_NORM"] == une_id][["KmFrom", "KmTo"]]
+    # Get tested intervals for this UNE ID
+    tested_rows = tested_df[tested_df["UNE_ID_NORM"] == une_id]
+    untested_rows = untested_df[untested_df["UNE_ID_NORM"] == une_id]
 
-    tested_intervals = list(tested_rows.itertuples(index=False, name=None))
-    untested_intervals = set(untested_rows.itertuples(index=False, name=None))
-    valid_intervals = [seg for seg in tested_intervals if seg not in untested_intervals]
+    # Determine which tested intervals to include
+    valid_tested_intervals = []
+    
+    if not tested_rows.empty:
+        # If there's a tested date in the plan, include all tested intervals for this UNE ID
+        # This handles cases where tests were done but planned for a different time
+        if pd.notna(row.get("Tested")):
+            # Test was performed according to plan - include all tested intervals
+            valid_tested_intervals = list(tested_rows[["KmFrom", "KmTo"]].itertuples(index=False, name=None))
+        elif pd.notna(planned_date):
+            # No tested date, but there's a planned date - use ±2 month window
+            if "Date" in tested_rows.columns:
+                # Create a copy to avoid SettingWithCopyWarning
+                tested_rows_copy = tested_rows.copy()
+                tested_rows_copy["Date"] = pd.to_datetime(tested_rows_copy["Date"], errors='coerce')
+                
+                # Calculate ±2 months window around planned date
+                from datetime import timedelta
+                planned_dt = pd.to_datetime(planned_date)
+                window_start = planned_dt - timedelta(days=60)  # 2 months before
+                window_end = planned_dt + timedelta(days=60)    # 2 months after
+                
+                # Only include tests performed within the ±2 month window
+                valid_tests = tested_rows_copy[
+                    pd.notna(tested_rows_copy["Date"]) & 
+                    (tested_rows_copy["Date"] >= window_start) & 
+                    (tested_rows_copy["Date"] <= window_end)
+                ]
+                valid_tested_intervals = list(valid_tests[["KmFrom", "KmTo"]].itertuples(index=False, name=None))
+            else:
+                # If no Date column found, use all tested intervals (fallback behavior)
+                valid_tested_intervals = list(tested_rows[["KmFrom", "KmTo"]].itertuples(index=False, name=None))
+        else:
+            # No planned date - include all tested intervals
+            valid_tested_intervals = list(tested_rows[["KmFrom", "KmTo"]].itertuples(index=False, name=None))
+
+    # Remove untested intervals - but only if this plan entry exists in untested report
+    # Plan entries take precedence over untested reports
+    untested_intervals = set()
+    if not untested_rows.empty:
+        # Only consider untested intervals if this specific plan entry's UNE ID exists in untested report
+        untested_intervals = set(untested_rows[["KmFrom", "KmTo"]].itertuples(index=False, name=None))
+    
+    valid_intervals = [seg for seg in valid_tested_intervals if seg not in untested_intervals]
     
     bounds = (min(row["KmFrom"], row["KmTo"]), max(row["KmFrom"], row["KmTo"]))
     une = row["UNE"]
     driftsomr = row["Driftsomr"]
     total_length = row["Lenght"]
     tested_date = row.get("Tested", None)
-    planned_date = row.get("Planned 2025", None)
     deadline_date = row.get("Interval, Last date", None)
     km_from = row["KmFrom"]
     km_to = row["KmTo"]
+    
     clipped = clip_to_bounds(valid_intervals, bounds)
     merged = merge_intervals(clipped)
     tested_length = sum(b - a for a, b in merged)
     coverage_pct = round((tested_length / total_length) * 100, 2) if total_length else 0.0
 
+    # Status logic now considers the ±2 month window and plan precedence
+    # The "Tested" date confirms a test was performed, but coverage is based on actual tested intervals
     if pd.isna(planned_date):
         status = "Otilldelad"
+    elif pd.notna(tested_date):
+        # If there's a tested date in the plan, a test was performed
+        # But the status should still reflect the actual coverage achieved
+        if coverage_pct >= 99.9:
+            status = "Färdigtestad"
+        elif coverage_pct > 0:
+            status = "Delvis testad"
+        else:
+            # Test was performed but no coverage found in the tested report
+            # This could be due to:
+            # 1. Test was done but not recorded in tested report
+            # 2. Test was done but the intervals don't match
+            # 3. Test was done but marked as untested
+            # We should still show it as at least partially tested since we have a tested date
+            status = "Delvis testad"
     elif coverage_pct >= 99.9:
         status = "Färdigtestad"
     elif coverage_pct > 0:
@@ -216,7 +289,6 @@ def get_all_statuses():
 
 if __name__ == "__main__":
     import argparse
-    import json
     import sys
 
     parser = argparse.ArgumentParser(description="Get segment status for a given UNE ID")
